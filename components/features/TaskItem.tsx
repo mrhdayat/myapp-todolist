@@ -76,6 +76,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
     return map[category] || category || 'Lainnya';
   };
 
+  const getRecurringLabel = () => {
+    if (!task.isRecurring || !task.recurringConfig) return null;
+    const { type, intervalDays, weekdays } = task.recurringConfig;
+    if (type === 'daily') return 'Harian';
+    if (type === 'interval') return `${intervalDays || 3} Hari`;
+    if (type === 'weekdays') {
+      const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      return (weekdays || []).map((d) => dayNames[d]).join(', ');
+    }
+    return 'Rutin';
+  };
+
   return (
     <motion.div
       layout
@@ -191,6 +203,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
         <NeuBadge variant="subtle" size="sm" className="hidden sm:inline-flex">
           {getCategoryLabel(task.category)}
         </NeuBadge>
+
+        {/* Recurring Badge */}
+        {task.isRecurring && (
+          <NeuBadge variant="accent" size="sm" className="hidden sm:inline-flex gap-1 font-mono">
+            <span>🔄</span>
+            <span>{getRecurringLabel()}</span>
+          </NeuBadge>
+        )}
 
         {/* Edit Button */}
         {!isEditing && (
