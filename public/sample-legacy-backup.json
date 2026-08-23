@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "exportedAt": "2026-08-22T05:06:04.856Z",
+  "theme": "charcoal-pro",
+  "tasks": [
+    {
+      "id": "task-legacy-01",
+      "title": "Selesaikan review rancangan arsitektur",
+      "completed": true,
+      "priority": "urgent",
+      "category": "work",
+      "dueDate": null,
+      "order": 0,
+      "createdAt": "2026-08-22T05:00:00.000Z",
+      "updatedAt": "2026-08-22T05:05:00.000Z"
+    },
+    {
+      "id": "task-legacy-02",
+      "title": "Implementasi sistem token neumorphism Warm Clay",
+      "completed": true,
+      "priority": "high",
+      "category": "work",
+      "dueDate": "2026-08-22",
+      "order": 1,
+      "createdAt": "2026-08-22T05:01:00.000Z",
+      "updatedAt": "2026-08-22T05:06:00.000Z"
+    },
+    {
+      "id": "task-legacy-03",
+      "title": "Uji coba import backup skema legacy dengan pemetaan otomatis",
+      "completed": false,
+      "priority": "normal",
+      "category": "learning",
+      "dueDate": null,
+      "order": 2,
+      "createdAt": "2026-08-22T05:02:00.000Z",
+      "updatedAt": "2026-08-22T05:02:00.000Z"
+    },
+    {
+      "id": "task-legacy-04",
+      "title": "Audit kontras warna WCAG AA pada light dan dark mode",
+      "completed": false,
+      "priority": "high",
+      "category": "health",
+      "dueDate": "2026-08-23",
+      "order": 3,
+      "createdAt": "2026-08-22T05:03:00.000Z",
+      "updatedAt": "2026-08-22T05:03:00.000Z"
+    }
+  ]
+}

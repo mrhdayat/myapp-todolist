@@ -1,0 +1,441 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   EMBEDDED FONTS (Clash Display, General Sans, IBM Plex Mono)
+   ========================================================= */
+
+/* Clash Display */
+@font-face {
+  font-family: 'Clash Display';
+  src: url('https://cdn.fontshare.com/wf/2GQIT54GKQY3JRFTSHS4ARTRNRQISSAA/3CIP5EBHRRHE5FVQU3VFROPUERNDSTDF/JTSL5QESUXATU47LCPUNHZQBDDIWDOSW.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Clash Display';
+  src: url('https://cdn.fontshare.com/wf/FPDAZ2S6SW4QMSRIIKNNGTPM6VIXYMKO/5HNPQ453FRLIQWV2FNOBUU3FKTDZQVSG/Z3MGHFHX6DCTLQ55LJYRJ5MDCZPMFZU6.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Clash Display';
+  src: url('https://cdn.fontshare.com/wf/BFBSY7LX5W2U2EROCLVVTQP4VS7S4PC3/IIUX4FGTMD2LK2VWD3RVTAS4SSMUN7B5/53RZKGODFYDW3QHTIL7IPOWTBCSUEZK7.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* General Sans */
+@font-face {
+  font-family: 'General Sans';
+  src: url('https://cdn.fontshare.com/wf/OAGW3MBG6B4G6ZPVFOUBIPU3C3MCT57U/4VUXGHR5QY3HWW2RF43V3O2X7FNDJFXS/B5J5U2ZOH5QWJ54M4LRPFYHQW2242W2L.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'General Sans';
+  src: url('https://cdn.fontshare.com/wf/Y7E35P6WJZZU7MMSF35YHRH3O3UGNZK4/2QGQW6E342Y7Q274TLYYHQ26R4S7G7I5/4Z3YXZSGBF5F3W32DLUZZ4LWW4O2H62D.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'General Sans';
+  src: url('https://cdn.fontshare.com/wf/6XG2Z5VFY4X23NWW7F7QO77U4S4I3B4C/O7O2C5FYL2G27MMPK35YHRH3O3UGNZK4/32W7O26B5Y3F5W27DLUZZ4LWW4O2H62D.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'General Sans';
+  src: url('https://cdn.fontshare.com/wf/27E73B5FY4X23NWW7F7QO77U4S4I3B4C/P5Y7Q274TLYYHQ26R4S7G7I54Z3YXZSG/BF5F3W32DLUZZ4LWW4O2H62D4Z3YXZSG.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* IBM Plex Mono */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3twJwlBFgsAXHNk.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3vAOwlBFgsAXHNk.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3pQPwlBFgsAXHNk.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* =========================================================
+   THEME PALETTES & HIGH CONTRAST TOKENS (RGB + HEX)
+   ========================================================= */
+
+:root {
+  --base-rgb: 237 231 220;
+  --surface-raised-rgb: 246 241 231;
+  --text-primary-rgb: 26 22 18;
+  --text-secondary-rgb: 74 64 53;
+  --accent-rgb: 37 84 215;
+  --accent-text-rgb: 255 255 255;
+  --status-done-rgb: 27 122 83;
+  --status-urgent-rgb: 211 47 47;
+
+  --base: #EDE7DC;
+  --surface-raised: #F6F1E7;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #C7BCA8;
+  --text-primary: #1A1612;
+  --text-secondary: #4A4035;
+  --accent: #2554D7;
+  --accent-text: #FFFFFF;
+  --status-done: #1B7A53;
+  --status-urgent: #D32F2F;
+  --border-subtle: rgba(199, 188, 168, 0.6);
+
+  --grid-gap-desktop: 20px;
+  --grid-gap-mobile: 12px;
+  --pad-card-lg: 24px;
+  --pad-card-sm: 16px;
+
+  --font-clash-display: 'Clash Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-general-sans: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-ibm-plex-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* 1. Warm Clay (Light) */
+[data-theme='warm-clay'] {
+  --base-rgb: 237 231 220;
+  --surface-raised-rgb: 246 241 231;
+  --text-primary-rgb: 26 22 18;
+  --text-secondary-rgb: 74 64 53;
+  --accent-rgb: 37 84 215;
+  --accent-text-rgb: 255 255 255;
+  --status-done-rgb: 27 122 83;
+  --status-urgent-rgb: 211 47 47;
+
+  --base: #EDE7DC;
+  --surface-raised: #F6F1E7;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #C7BCA8;
+  --text-primary: #1A1612;
+  --text-secondary: #4A4035;
+  --accent: #2554D7;
+  --accent-text: #FFFFFF;
+  --status-done: #1B7A53;
+  --status-urgent: #D32F2F;
+  --border-subtle: rgba(199, 188, 168, 0.6);
+}
+
+/* 1. Warm Clay (Dark) */
+[data-theme='warm-clay-dark'] {
+  --base-rgb: 28 24 20;
+  --surface-raised-rgb: 38 33 28;
+  --text-primary-rgb: 250 245 237;
+  --text-secondary-rgb: 200 190 175;
+  --accent-rgb: 100 139 255;
+  --accent-text-rgb: 13 19 38;
+  --status-done-rgb: 62 217 150;
+  --status-urgent-rgb: 255 102 90;
+
+  --base: #1C1814;
+  --surface-raised: #26211C;
+  --shadow-light: rgba(255, 248, 235, 0.07);
+  --shadow-dark: rgba(0, 0, 0, 0.7);
+  --text-primary: #FAF5ED;
+  --text-secondary: #C8BEAF;
+  --accent: #648BFF;
+  --accent-text: #0D1326;
+  --status-done: #3ED996;
+  --status-urgent: #FF665A;
+  --border-subtle: rgba(255, 248, 235, 0.12);
+}
+
+/* 2. Blob Pastel (Light) */
+[data-theme='blob-pastel'] {
+  --base-rgb: 247 239 233;
+  --surface-raised-rgb: 255 247 242;
+  --text-primary-rgb: 34 18 23;
+  --text-secondary-rgb: 88 63 71;
+  --accent-rgb: 217 59 96;
+  --accent-text-rgb: 255 255 255;
+  --status-done-rgb: 27 138 90;
+  --status-urgent-rgb: 216 49 37;
+
+  --base: #F7EFE9;
+  --surface-raised: #FFF7F2;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #D8C8BF;
+  --text-primary: #221217;
+  --text-secondary: #583F47;
+  --accent: #D93B60;
+  --accent-text: #FFFFFF;
+  --status-done: #1B8A5A;
+  --status-urgent: #D83125;
+  --border-subtle: rgba(216, 200, 191, 0.6);
+}
+
+/* 2. Blob Pastel (Dark) */
+[data-theme='blob-pastel-dark'] {
+  --base-rgb: 32 21 25;
+  --surface-raised-rgb: 42 29 35;
+  --text-primary-rgb: 250 240 244;
+  --text-secondary-rgb: 203 180 190;
+  --accent-rgb: 255 110 142;
+  --accent-text-rgb: 28 7 14;
+  --status-done-rgb: 62 217 150;
+  --status-urgent-rgb: 255 104 98;
+
+  --base: #201519;
+  --surface-raised: #2A1D23;
+  --shadow-light: rgba(255, 230, 240, 0.07);
+  --shadow-dark: rgba(0, 0, 0, 0.7);
+  --text-primary: #FAF0F4;
+  --text-secondary: #CBB4BE;
+  --accent: #FF6E8E;
+  --accent-text: #1C070E;
+  --status-done: #3ED996;
+  --status-urgent: #FF6862;
+  --border-subtle: rgba(255, 230, 240, 0.12);
+}
+
+/* 3. Ocean Breeze (Light) */
+[data-theme='ocean-breeze'] {
+  --base-rgb: 232 239 245;
+  --surface-raised-rgb: 242 247 251;
+  --text-primary-rgb: 15 30 40;
+  --text-secondary-rgb: 61 83 98;
+  --accent-rgb: 11 125 99;
+  --accent-text-rgb: 255 255 255;
+  --status-done-rgb: 11 125 99;
+  --status-urgent-rgb: 211 47 47;
+
+  --base: #E8EFF5;
+  --surface-raised: #F2F7FB;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #BAC8D3;
+  --text-primary: #0F1E28;
+  --text-secondary: #3D5362;
+  --accent: #0B7D63;
+  --accent-text: #FFFFFF;
+  --status-done: #0B7D63;
+  --status-urgent: #D32F2F;
+  --border-subtle: rgba(186, 200, 211, 0.6);
+}
+
+/* 3. Ocean Breeze (Dark) */
+[data-theme='ocean-breeze-dark'] {
+  --base-rgb: 16 25 32;
+  --surface-raised-rgb: 24 35 43;
+  --text-primary-rgb: 232 244 252;
+  --text-secondary-rgb: 160 188 207;
+  --accent-rgb: 42 209 163;
+  --accent-text-rgb: 5 25 19;
+  --status-done-rgb: 42 209 163;
+  --status-urgent-rgb: 255 106 91;
+
+  --base: #101920;
+  --surface-raised: #18232B;
+  --shadow-light: rgba(200, 230, 250, 0.07);
+  --shadow-dark: rgba(0, 0, 0, 0.7);
+  --text-primary: #E8F4FC;
+  --text-secondary: #A0BCCF;
+  --accent: #2AD1A3;
+  --accent-text: #051913;
+  --status-done: #2AD1A3;
+  --status-urgent: #FF6A5B;
+  --border-subtle: rgba(200, 230, 250, 0.12);
+}
+
+/* 4. Midnight Carbon (Light) */
+[data-theme='midnight-carbon'] {
+  --base-rgb: 238 238 236;
+  --surface-raised-rgb: 248 248 246;
+  --text-primary-rgb: 18 18 20;
+  --text-secondary-rgb: 72 72 78;
+  --accent-rgb: 230 74 25;
+  --accent-text-rgb: 255 255 255;
+  --status-done-rgb: 30 142 79;
+  --status-urgent-rgb: 211 47 47;
+
+  --base: #EEEEEC;
+  --surface-raised: #F8F8F6;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #C4C4BE;
+  --text-primary: #121214;
+  --text-secondary: #48484E;
+  --accent: #E64A19;
+  --accent-text: #FFFFFF;
+  --status-done: #1E8E4F;
+  --status-urgent: #D32F2F;
+  --border-subtle: rgba(196, 196, 190, 0.6);
+}
+
+/* 4. Midnight Carbon (Dark) */
+[data-theme='midnight-carbon-dark'] {
+  --base-rgb: 17 17 19;
+  --surface-raised-rgb: 26 26 29;
+  --text-primary-rgb: 245 245 247;
+  --text-secondary-rgb: 181 181 190;
+  --accent-rgb: 255 100 52;
+  --accent-text-rgb: 24 8 3;
+  --status-done-rgb: 62 217 133;
+  --status-urgent-rgb: 255 85 77;
+
+  --base: #111113;
+  --surface-raised: #1A1A1D;
+  --shadow-light: rgba(255, 255, 255, 0.06);
+  --shadow-dark: rgba(0, 0, 0, 0.8);
+  --text-primary: #F5F5F7;
+  --text-secondary: #B5B5BE;
+  --accent: #FF6434;
+  --accent-text: #180803;
+  --status-done: #3ED985;
+  --status-urgent: #FF554D;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+}
+
+/* Global Reset & High-Contrast Typography */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--base);
+  color: var(--text-primary);
+  font-family: var(--font-general-sans);
+  min-height: 100vh;
+  transition: background-color 220ms cubic-bezier(0.16, 1, 0.3, 1), color 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+  font-family: var(--font-clash-display);
+}
+
+.font-body {
+  font-family: var(--font-general-sans);
+}
+
+.font-mono {
+  font-family: var(--font-ibm-plex-mono);
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* =========================================================
+   NEUMORPHIC CORE PRIMITIVES (Crisp, High Contrast, Tactile)
+   ========================================================= */
+.neu-card {
+  border-radius: 20px;
+  background-color: var(--surface-raised);
+  box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+  border: 1px solid var(--border-subtle);
+  transition: box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 160ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms;
+}
+
+.neu-button {
+  border-radius: 14px;
+  background-color: var(--surface-raised);
+  box-shadow: 4px 4px 10px var(--shadow-dark), -4px -4px 10px var(--shadow-light);
+  border: 1px solid var(--border-subtle);
+  transition: box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1), transform 140ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms;
+}
+
+.neu-button:hover:not(:disabled) {
+  box-shadow: 5px 5px 12px var(--shadow-dark), -5px -5px 12px var(--shadow-light);
+}
+
+.neu-button:active:not(:disabled) {
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+  transform: scale(0.98);
+}
+
+.neu-small {
+  border-radius: 10px;
+  background-color: var(--surface-raised);
+  box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+  border: 1px solid var(--border-subtle);
+  transition: box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1), transform 140ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms;
+}
+
+.neu-inset {
+  border-radius: 14px;
+  background-color: var(--base);
+  box-shadow: inset 3px 3px 7px var(--shadow-dark), inset -3px -3px 7px var(--shadow-light);
+  border: 1px solid var(--border-subtle);
+}
+
+.neu-inset-sm {
+  border-radius: 8px;
+  background-color: var(--base);
+  box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--shadow-dark);
+  border-radius: 12px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
