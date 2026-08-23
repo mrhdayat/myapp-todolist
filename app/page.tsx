@@ -11,6 +11,7 @@ import { BentoStats } from '@/components/features/BentoStats';
 import { ImportExportModal } from '@/components/features/ImportExportModal';
 import { SettingsModal } from '@/components/features/SettingsModal';
 import { ToastContainer } from '@/components/features/Toast';
+import { CommandPalette } from '@/components/features/CommandPalette';
 
 export default function DailyFocusPage() {
   const initializeStore = useTaskStore((state) => state.initializeStore);
@@ -70,6 +71,7 @@ export default function DailyFocusPage() {
       <ImportExportModal />
       <SettingsModal />
       <ToastContainer />
+      <CommandPalette />
     </main>
   );
 }
