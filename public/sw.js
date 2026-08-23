@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daily-focus-v1.1';
+const CACHE_NAME = 'daily-focus-v1.2';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -7,7 +7,7 @@ const PRECACHE_ASSETS = [
   '/icons/icon.svg',
 ];
 
-// Install: precache shell assets
+// Install: precache essential shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: clean up old caches
+// Activate: clean up older caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -31,17 +31,29 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network-first for navigation, cache-first/stale-while-revalidate for static assets
+// Fetch handler
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
-  // Ignore non-GET requests
+  // 1. Ignore non-GET requests
   if (request.method !== 'GET') return;
 
-  // Ignore browser extensions & non-http schemes
-  if (!request.url.startsWith('http')) return;
+  // 2. Ignore non-http/https (e.g. chrome-extension://, blob:)
+  if (!url.protocol.startsWith('http')) return;
 
-  // Navigation requests (HTML pages): Network first, fallback to cache
+  // 3. ALWAYS bypass Next.js HMR, dev chunks, and API routes directly to network
+  if (
+    url.pathname.startsWith('/_next/webpack-hmr') ||
+    url.pathname.startsWith('/_next/static/webpack/') ||
+    url.pathname.startsWith('/api/') ||
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1'
+  ) {
+    return;
+  }
+
+  // 4. HTML Navigation: Network-first, fallback to offline cache shell
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -61,20 +73,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: Stale-while-revalidate
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
+  // 5. Static Assets (icons, manifest, images): Cache-first with network fallback
+  if (
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/manifest.json' ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico)$/)
+  ) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           }
           return networkResponse;
-        })
-        .catch(() => cachedResponse);
+        });
+      })
+    );
+    return;
+  }
 
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // 6. For all other files (including JS chunks), use standard network fetch
 });
