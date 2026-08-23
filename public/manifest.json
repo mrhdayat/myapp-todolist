@@ -1,0 +1,39 @@
+{
+  "name": "Daily Focus — Neumorphic Modern Task Manager",
+  "short_name": "Daily Focus",
+  "description": "Daily to-do and focus management app with tactile neumorphic design, multi-theme customization, streak tracking, and offline support.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#EDE7DC",
+  "theme_color": "#2F5FE0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": []
+}
