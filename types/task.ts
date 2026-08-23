@@ -89,4 +89,8 @@ export interface ToastMessage {
   title: string;
   description?: string;
   duration?: number;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }

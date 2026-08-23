@@ -267,11 +267,48 @@ export const useTaskStore = create<TaskStore>()(
     },
 
     deleteTask: async (id: string) => {
-      const { tasks, settings } = get();
-      set({ tasks: tasks.filter(t => t.id !== id) });
+      const { tasks, settings, addToast } = get();
+      const taskToDelete = tasks.find((t) => t.id === id);
+      if (!taskToDelete) return;
+
+      const originalIndex = tasks.findIndex((t) => t.id === id);
+
+      // Optimistically remove from state
+      set({ tasks: tasks.filter((t) => t.id !== id) });
       if (settings.soundEnabled) soundManager.playDelete();
-      await dbClient.deleteTask(id);
-      get().addToast({ type: 'info', title: 'Task Dihapus' });
+
+      let isUndone = false;
+
+      // Schedule permanent DB deletion after 5 seconds
+      const timer = setTimeout(async () => {
+        if (!isUndone) {
+          await dbClient.deleteTask(id);
+        }
+      }, 5000);
+
+      // Show Toast with Undo action
+      addToast({
+        type: 'info',
+        title: 'Task Dihapus',
+        description: `"${taskToDelete.title || 'Task'}" dihapus.`,
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            isUndone = true;
+            clearTimeout(timer);
+            const currentTasks = get().tasks;
+            const restored = [...currentTasks];
+            restored.splice(Math.min(originalIndex, restored.length), 0, taskToDelete);
+            set({ tasks: restored });
+            get().addToast({
+              type: 'success',
+              title: 'Task Dikembalikan',
+              description: `"${taskToDelete.title || 'Task'}" berhasil dipulihkan.`,
+            });
+          },
+        },
+      });
     },
 
     reorderTasks: async (newOrderedTasks: Task[]) => {
