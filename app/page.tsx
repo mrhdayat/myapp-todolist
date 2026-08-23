@@ -12,6 +12,7 @@ import { ImportExportModal } from '@/components/features/ImportExportModal';
 import { SettingsModal } from '@/components/features/SettingsModal';
 import { ToastContainer } from '@/components/features/Toast';
 import { ReminderScheduler } from '@/components/features/ReminderScheduler';
+import { CommandPalette } from '@/components/features/CommandPalette';
 
 export default function DailyFocusPage() {
   const initializeStore = useTaskStore((state) => state.initializeStore);
@@ -72,6 +73,7 @@ export default function DailyFocusPage() {
       <SettingsModal />
       <ToastContainer />
       <ReminderScheduler />
+      <CommandPalette />
     </main>
   );
 }

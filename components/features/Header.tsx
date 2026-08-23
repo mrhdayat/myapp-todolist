@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Flame, Moon, Sun, Settings, ArrowDownToLine, CheckSquare2 } from 'lucide-react';
+import { Flame, Moon, Sun, Settings, ArrowDownToLine, CheckSquare2, Search } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { formatDateDisplay, getTodayDateString } from '@/lib/date-utils';
 import { NeuIconButton } from '@/components/ui/NeuIconButton';
@@ -51,6 +51,20 @@ export const Header: React.FC = () => {
             {settings.streak} <span className="font-body font-normal text-text-secondary text-[11px]">Hari</span>
           </span>
         </div>
+
+        {/* Search / Command Palette */}
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+          }}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-neu-md neu-button text-text-secondary hover:text-text-primary transition-all text-xs font-mono"
+          title="Buka Command Palette (Cmd+K / Ctrl+K)"
+        >
+          <IconWrapper icon={Search} size={14} color="var(--accent)" />
+          <span className="text-[11px] font-body text-text-secondary">Cari...</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-base neu-inset-sm font-mono text-text-secondary">⌘K</span>
+        </button>
 
         {/* Import / Export */}
         <NeuIconButton
