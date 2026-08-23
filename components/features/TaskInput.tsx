@@ -59,8 +59,13 @@ export const TaskInput: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Tulis fokus task baru kamu di sini..."
-              className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-sm sm:text-base font-body rounded-neu-md neu-inset py-3 px-4 outline-none focus:ring-1 focus:ring-accent transition-all border border-[var(--border-subtle)]"
+              className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-sm sm:text-base font-body rounded-neu-md neu-inset py-3 px-4 pr-16 outline-none focus:ring-1 focus:ring-accent transition-all border border-[var(--border-subtle)]"
             />
+            {title.trim() && (
+              <span className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-secondary/70 bg-surface-raised px-1.5 py-0.5 rounded border border-[var(--border-subtle)] pointer-events-none">
+                ↵ Enter
+              </span>
+            )}
           </div>
 
           <NeuButton

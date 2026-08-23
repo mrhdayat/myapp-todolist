@@ -1,17 +1,44 @@
 'use client';
 
-import React from 'react';
-import { Search, X, Filter } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Search, X } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
-import { TaskPriority, TaskCategory } from '@/types/task';
+import { TaskPriority } from '@/types/task';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 
 export const TaskFilters: React.FC = () => {
   const filters = useTaskStore((state) => state.filters);
   const setFilter = useTaskStore((state) => state.setFilter);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleStatusChange = (status: 'all' | 'pending' | 'done') => {
     setFilter({ status });
+  };
+
+  // Keyboard shortcut: '/' focuses search when not in input
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName || '';
+      const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) ||
+        (document.activeElement as HTMLElement)?.isContentEditable;
+
+      if (e.key === '/' && !isInputActive) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      if (filters.searchQuery) {
+        setFilter({ searchQuery: '' });
+      }
+      searchInputRef.current?.blur();
+    }
   };
 
   return (
@@ -42,26 +69,32 @@ export const TaskFilters: React.FC = () => {
 
       {/* Search & Category Filter */}
       <div className="flex items-center gap-2">
-        {/* Search Bar */}
-        <div className="relative flex-1 sm:w-48">
+        {/* Search Bar with '/' Shortcut */}
+        <div className="relative flex-1 sm:w-52">
           <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
             <IconWrapper icon={Search} size="sm" />
           </div>
           <input
+            ref={searchInputRef}
             type="text"
             value={filters.searchQuery}
             onChange={(e) => setFilter({ searchQuery: e.target.value })}
-            placeholder="Cari task..."
-            className="w-full bg-base text-text-primary placeholder:text-text-secondary/60 text-xs font-body rounded-neu-sm neu-inset py-2 pl-8 pr-7 outline-none focus:ring-1 focus:ring-accent"
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Cari task... (/)"
+            className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-xs font-body rounded-neu-sm neu-inset py-2 pl-8 pr-8 outline-none focus:ring-1 focus:ring-accent border border-[var(--border-subtle)]"
           />
-          {filters.searchQuery && (
+          {filters.searchQuery ? (
             <button
               onClick={() => setFilter({ searchQuery: '' })}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary p-0.5"
-              aria-label="Bersihkan pencarian"
+              aria-label="Bersihkan pencarian (ESC)"
             >
               <IconWrapper icon={X} size="sm" />
             </button>
+          ) : (
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-secondary/80 px-1.5 py-0.5 rounded bg-surface-raised border border-[var(--border-subtle)] pointer-events-none">
+              /
+            </kbd>
           )}
         </div>
 
@@ -69,7 +102,7 @@ export const TaskFilters: React.FC = () => {
         <select
           value={filters.priority}
           onChange={(e) => setFilter({ priority: e.target.value as 'all' | TaskPriority })}
-          className="bg-base text-text-primary text-xs font-body rounded-neu-sm neu-inset py-2 px-2 outline-none cursor-pointer"
+          className="bg-base text-text-primary text-xs font-body rounded-neu-sm neu-inset py-2 px-2 outline-none cursor-pointer border border-[var(--border-subtle)]"
           aria-label="Filter berdasarkan prioritas"
         >
           <option value="all">Semua Prioritas</option>
