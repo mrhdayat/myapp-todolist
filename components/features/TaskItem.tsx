@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, GripVertical, Calendar, Edit3, Check, X } from 'lucide-react';
+import { Trash2, GripVertical, Calendar, Edit3, Check, X, Copy } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTaskStore } from '@/store/useTaskStore';
 import { NeuCheckbox } from '@/components/ui/NeuCheckbox';
 import { NeuBadge } from '@/components/ui/NeuBadge';
 import { NeuIconButton } from '@/components/ui/NeuIconButton';
 import { IconWrapper } from '@/components/ui/IconWrapper';
+import { copyToClipboard } from '@/lib/clipboard';
+import { DURATION, EASE_ENTER, EASE_EXIT } from '@/lib/motion-tokens';
 
 interface TaskItemProps {
   task: Task;
@@ -19,6 +21,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   const toggleTaskStatus = useTaskStore((state) => state.toggleTaskStatus);
   const deleteTask = useTaskStore((state) => state.deleteTask);
   const updateTask = useTaskStore((state) => state.updateTask);
+  const addToast = useTaskStore((state) => state.addToast);
 
   const rawRecord = task as unknown as Record<string, unknown>;
   const displayTitle =
@@ -33,6 +36,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(displayTitle);
+  const [justCopied, setJustCopied] = useState(false);
   const isDone = task.status === 'done';
 
   const handleToggle = () => {
@@ -54,6 +58,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   const handleCancelEdit = () => {
     setEditTitle(displayTitle);
     setIsEditing(false);
+  };
+
+  const handleCopyTask = async () => {
+    const textToCopy = `${isDone ? '✅ [Selesai]' : '⏳ [Belum]'} ${displayTitle}${task.dueDate ? ` (Target: ${task.dueDate})` : ''}`;
+    const success = await copyToClipboard(textToCopy);
+    if (success) {
+      setJustCopied(true);
+      addToast({
+        type: 'success',
+        title: 'Task Disalin',
+        description: `"${displayTitle}" disalin ke clipboard.`,
+      });
+      setTimeout(() => setJustCopied(false), 2000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,14 +97,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.92, height: 0, marginBottom: 0 }}
       transition={{
-        duration: 0.22,
-        ease: [0.16, 1, 0.3, 1],
+        duration: DURATION.normal,
+        ease: EASE_ENTER,
       }}
-      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 transition-all duration-200 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] ${
+      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] ${
         isDone
           ? 'neu-inset'
           : isDragging
@@ -191,6 +209,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
         <NeuBadge variant="subtle" size="sm" className="hidden sm:inline-flex">
           {getCategoryLabel(task.category)}
         </NeuBadge>
+
+        {/* Copy Task Button */}
+        {!isEditing && (
+          <button
+            type="button"
+            onClick={handleCopyTask}
+            className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-text-primary p-1.5 rounded-neu-sm transition-opacity hidden sm:block hover:bg-[var(--surface-raised)]"
+            aria-label="Salin teks task"
+            title="Copy teks task"
+          >
+            <IconWrapper icon={justCopied ? Check : Copy} size={16} color={justCopied ? 'var(--status-done)' : undefined} />
+          </button>
+        )}
 
         {/* Edit Button */}
         {!isEditing && (
