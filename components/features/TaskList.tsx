@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import { useTaskStore } from '@/store/useTaskStore';
 import { Task } from '@/types/task';
 import { TaskItem } from './TaskItem';
+import { EmptyOnboardingState, FilterEmptyState } from './EmptyOnboardingState';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 
 export const TaskList: React.FC = () => {
@@ -57,29 +58,11 @@ export const TaskList: React.FC = () => {
   };
 
   if (tasks.length === 0) {
-    return (
-      <div className="py-12 px-6 rounded-neu-lg neu-inset text-center flex flex-col items-center justify-center gap-3 select-none my-4">
-        <div className="w-12 h-12 rounded-neu-md neu-small flex items-center justify-center text-accent">
-          <IconWrapper icon={Inbox} size="lg" />
-        </div>
-        <h3 className="font-display font-semibold text-lg text-text-primary">
-          Belum Ada Task Hari Ini
-        </h3>
-        <p className="font-body text-xs sm:text-sm text-text-secondary max-w-md leading-relaxed">
-          Mulai hari dengan mencatat 3–5 hal paling penting yang ingin kamu selesaikan. Fokus pada prioritas nyata.
-        </p>
-      </div>
-    );
+    return <EmptyOnboardingState />;
   }
 
   if (filteredTasks.length === 0) {
-    return (
-      <div className="py-8 px-4 rounded-neu-md neu-inset text-center flex flex-col items-center justify-center gap-2 select-none my-4">
-        <p className="font-body text-sm text-text-secondary">
-          Tidak ada task yang sesuai dengan filter pencarian.
-        </p>
-      </div>
-    );
+    return <FilterEmptyState />;
   }
 
   return (
