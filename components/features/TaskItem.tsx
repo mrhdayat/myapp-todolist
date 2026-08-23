@@ -76,38 +76,62 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
     return map[category] || category || 'Lainnya';
   };
 
+  const isSelectionMode = useTaskStore((state) => state.isSelectionMode);
+  const selectedTaskIds = useTaskStore((state) => state.selectedTaskIds);
+  const toggleSelectTask = useTaskStore((state) => state.toggleSelectTask);
+  const isSelected = selectedTaskIds.includes(task.id);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isSelectionMode && !isEditing) {
+      toggleSelectTask(task.id);
+    }
+  };
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.92, height: 0, marginBottom: 0 }}
       transition={{
-        duration: 0.22,
+        duration: 0.28,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 transition-all duration-200 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] ${
-        isDone
+      onClick={handleCardClick}
+      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] cursor-pointer transition-all ${
+        isSelected
+          ? 'neu-inset ring-2 ring-accent shadow-[inset_3px_3px_7px_var(--shadow-dark)]'
+          : isDone
           ? 'neu-inset'
           : isDragging
           ? 'neu-card ring-2 ring-accent/30 shadow-[8px_8px_20px_var(--shadow-dark)]'
           : 'neu-button hover:shadow-[6px_6px_14px_var(--shadow-dark),-6px_-6px_14px_var(--shadow-light)]'
       }`}
     >
-      {/* Left: Drag Handle & Checkbox */}
+      {/* Left: Drag Handle or Selection Checkbox */}
       <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
-        <div
-          className="text-text-secondary/40 group-hover:text-text-secondary/80 cursor-grab active:cursor-grabbing p-1 transition-colors touch-none"
-          title="Geser untuk mengatur urutan"
-        >
-          <IconWrapper icon={GripVertical} size={16} />
-        </div>
+        {!isSelectionMode && (
+          <div
+            className="text-text-secondary/40 group-hover:text-text-secondary/80 cursor-grab active:cursor-grabbing p-1 transition-colors touch-none"
+            title="Geser untuk mengatur urutan"
+          >
+            <IconWrapper icon={GripVertical} size={16} />
+          </div>
+        )}
 
-        <NeuCheckbox
-          checked={isDone}
-          onChange={handleToggle}
-          aria-label={`Tandai task "${displayTitle}" sebagai ${isDone ? 'belum selesai' : 'selesai'}`}
-        />
+        {isSelectionMode ? (
+          <NeuCheckbox
+            checked={isSelected}
+            onChange={() => toggleSelectTask(task.id)}
+            aria-label={`Pilih task "${displayTitle}"`}
+          />
+        ) : (
+          <NeuCheckbox
+            checked={isDone}
+            onChange={handleToggle}
+            aria-label={`Tandai task "${displayTitle}" sebagai ${isDone ? 'belum selesai' : 'selesai'}`}
+          />
+        )}
       </div>
 
       {/* Center: Title & Metadata */}

@@ -11,6 +11,7 @@ import { BentoStats } from '@/components/features/BentoStats';
 import { ImportExportModal } from '@/components/features/ImportExportModal';
 import { SettingsModal } from '@/components/features/SettingsModal';
 import { ToastContainer } from '@/components/features/Toast';
+import { BulkActionBar } from '@/components/features/BulkActionBar';
 
 export default function DailyFocusPage() {
   const initializeStore = useTaskStore((state) => state.initializeStore);
@@ -22,7 +23,7 @@ export default function DailyFocusPage() {
   }, [initializeStore]);
 
   return (
-    <main className="min-h-screen bg-base text-text-primary">
+    <main className="min-h-screen bg-base text-text-primary pb-20">
       {/* 1200px max-width container with responsive 24px/48px horizontal padding */}
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
         {/* App Header */}
@@ -70,6 +71,7 @@ export default function DailyFocusPage() {
       <ImportExportModal />
       <SettingsModal />
       <ToastContainer />
+      <BulkActionBar />
     </main>
   );
 }
