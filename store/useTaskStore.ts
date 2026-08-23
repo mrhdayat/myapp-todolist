@@ -20,7 +20,13 @@ export interface TaskState {
 
 export interface TaskActions {
   initializeStore: () => Promise<void>;
-  addTask: (title: string, priority?: Task['priority'], category?: Task['category'], dueDate?: string | null) => Promise<Task>;
+  addTask: (
+    title: string,
+    priority?: Task['priority'],
+    category?: Task['category'],
+    dueDate?: string | null,
+    dueTime?: string | null
+  ) => Promise<Task>;
   toggleTaskStatus: (id: string) => Promise<void>;
   updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -213,7 +219,13 @@ export const useTaskStore = create<TaskStore>()(
       await Promise.all([dbClient.saveAllTasks(updatedTasks), dbClient.saveSettings(newSettings)]);
     },
 
-    addTask: async (title, priority = 'normal', category = 'work', dueDate = null) => {
+    addTask: async (
+      title,
+      priority = 'normal',
+      category = 'work',
+      dueDate = null,
+      dueTime = null
+    ) => {
       const { tasks, settings } = get();
       const now = new Date().toISOString();
       const today = getTodayDateString();
@@ -225,6 +237,7 @@ export const useTaskStore = create<TaskStore>()(
         priority,
         category,
         dueDate,
+        dueTime,
         order: tasks.length,
         isRecurring: false,
         createdAt: now,
