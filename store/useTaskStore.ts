@@ -25,6 +25,7 @@ export interface TaskActions {
     priority?: Task['priority'],
     category?: Task['category'],
     dueDate?: string | null,
+    dueTime?: string | null,
     isRecurring?: boolean,
     recurringConfig?: RecurringConfig
   ) => Promise<Task>;
@@ -273,6 +274,7 @@ export const useTaskStore = create<TaskStore>()(
       priority = 'normal',
       category = 'work',
       dueDate = null,
+      dueTime = null,
       isRecurring = false,
       recurringConfig = { type: 'none' }
     ) => {
@@ -287,6 +289,7 @@ export const useTaskStore = create<TaskStore>()(
         priority,
         category,
         dueDate,
+        dueTime,
         order: tasks.length,
         isRecurring,
         recurringConfig: isRecurring ? { ...recurringConfig, lastGeneratedDate: today } : undefined,

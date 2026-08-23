@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Tag, Flag, Calendar, Repeat } from 'lucide-react';
+import { Plus, Tag, Flag, Calendar, Clock, BellRing, Repeat } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { TaskPriority, TaskCategory, RecurringType, RecurringConfig } from '@/types/task';
 import { NeuButton } from '@/components/ui/NeuButton';
 import { NeuCard } from '@/components/ui/NeuCard';
 import { IconWrapper } from '@/components/ui/IconWrapper';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '@/lib/notifications';
 
 const PRIORITIES: { value: TaskPriority; label: string; color: string }[] = [
   { value: 'urgent', label: 'Darurat', color: 'var(--status-urgent)' },
@@ -36,16 +41,37 @@ const WEEKDAY_OPTIONS = [
 
 export const TaskInput: React.FC = () => {
   const addTask = useTaskStore((state) => state.addTask);
+  const addToast = useTaskStore((state) => state.addToast);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [category, setCategory] = useState<TaskCategory>('work');
   const [showOptions, setShowOptions] = useState(false);
   const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringType, setRecurringType] = useState<RecurringType>('interval');
   const [intervalDays, setIntervalDays] = useState(3);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(getNotificationPermission());
+
+  const handleRequestNotification = async () => {
+    const granted = await requestNotificationPermission();
+    setNotifPerm(getNotificationPermission());
+    if (granted) {
+      addToast({
+        type: 'success',
+        title: 'Notifikasi Diizinkan',
+        description: 'Pengingat jam task akan dikirimkan melalui browser notification.',
+      });
+    } else {
+      addToast({
+        type: 'warning',
+        title: 'Izin Notifikasi Ditolak',
+        description: 'Aktifkan izin notifikasi di setelan browser untuk menerima reminder.',
+      });
+    }
+  };
 
   const toggleWeekday = (day: number) => {
     if (selectedWeekdays.includes(day)) {
@@ -71,9 +97,19 @@ export const TaskInput: React.FC = () => {
           }
         : undefined;
 
-      await addTask(title, priority, category, dueDate || null, isRecurring, recurringConfig);
+      await addTask(
+        title,
+        priority,
+        category,
+        dueDate || null,
+        dueTime || null,
+        isRecurring,
+        recurringConfig
+      );
+
       setTitle('');
       setDueDate('');
+      setDueTime('');
       setShowOptions(false);
       setIsRecurring(false);
     } finally {
@@ -92,8 +128,13 @@ export const TaskInput: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Tulis fokus task baru kamu di sini..."
-              className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-sm sm:text-base font-body rounded-neu-md neu-inset py-3 px-4 outline-none focus:ring-1 focus:ring-accent transition-all border border-[var(--border-subtle)]"
+              className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-sm sm:text-base font-body rounded-neu-md neu-inset py-3 px-4 pr-16 outline-none focus:ring-1 focus:ring-accent transition-all border border-[var(--border-subtle)]"
             />
+            {title.trim() && (
+              <span className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-secondary/70 bg-surface-raised px-1.5 py-0.5 rounded border border-[var(--border-subtle)] pointer-events-none">
+                ↵ Enter
+              </span>
+            )}
           </div>
 
           <NeuButton
@@ -101,7 +142,7 @@ export const TaskInput: React.FC = () => {
             size="md"
             variant={showOptions ? 'inset' : 'default'}
             onClick={() => setShowOptions(!showOptions)}
-            aria-label="Pengaturan prioritas, kategori, dan perulangan task"
+            aria-label="Pengaturan prioritas, kategori, waktu, dan perulangan task"
             className="hidden sm:inline-flex"
           >
             <IconWrapper icon={Tag} size="sm" />
@@ -120,10 +161,10 @@ export const TaskInput: React.FC = () => {
           </NeuButton>
         </div>
 
-        {/* Options Panel */}
+        {/* Options Panel (Priority, Category, Due Date, Due Time, Recurring) */}
         {showOptions && (
           <div className="pt-3 border-t border-[var(--shadow-dark)]/20 flex flex-col gap-3 animate-fadeIn">
-            {/* Top row: Priority, Category, Target Date */}
+            {/* Top row: Priority, Category, Target Date, Target Time */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-wrap">
               {/* Priority Selector */}
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -164,17 +205,31 @@ export const TaskInput: React.FC = () => {
                 </select>
               </div>
 
-              {/* Due Date */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-text-secondary font-medium flex items-center gap-1">
-                  <IconWrapper icon={Calendar} size="sm" /> Target:
-                </span>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="bg-base text-text-primary text-xs font-mono rounded-neu-sm neu-inset px-2 py-1 outline-none"
-                />
+              {/* Due Date & Time */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-text-secondary font-medium flex items-center gap-1">
+                    <IconWrapper icon={Calendar} size="sm" /> Tanggal:
+                  </span>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="bg-base text-text-primary text-xs font-mono rounded-neu-sm neu-inset px-2 py-1 outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-text-secondary font-medium flex items-center gap-1">
+                    <IconWrapper icon={Clock} size="sm" /> Jam:
+                  </span>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="bg-base text-text-primary text-xs font-mono rounded-neu-sm neu-inset px-2 py-1 outline-none"
+                  />
+                </div>
               </div>
             </div>
 
@@ -272,6 +327,23 @@ export const TaskInput: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Notification Permission Opt-in Prompt */}
+            {dueTime && isNotificationSupported() && notifPerm !== 'granted' && (
+              <div className="pt-2 border-t border-[var(--shadow-dark)]/10 flex items-center justify-between gap-2">
+                <span className="text-xs text-text-secondary">
+                  💡 Aktifkan izin browser untuk menerima pengingat pada jam {dueTime}.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRequestNotification}
+                  className="text-xs px-2.5 py-1 rounded-neu-sm neu-button text-accent font-semibold flex items-center gap-1 hover:shadow-sm"
+                >
+                  <IconWrapper icon={BellRing} size={14} />
+                  <span>Izinkan Reminder</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </form>

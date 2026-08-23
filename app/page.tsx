@@ -11,6 +11,7 @@ import { BentoStats } from '@/components/features/BentoStats';
 import { ImportExportModal } from '@/components/features/ImportExportModal';
 import { SettingsModal } from '@/components/features/SettingsModal';
 import { ToastContainer } from '@/components/features/Toast';
+import { ReminderScheduler } from '@/components/features/ReminderScheduler';
 
 export default function DailyFocusPage() {
   const initializeStore = useTaskStore((state) => state.initializeStore);
@@ -35,7 +36,7 @@ export default function DailyFocusPage() {
             aria-label="Daftar Fokus Harian"
             className="col-span-1 lg:col-span-7 flex flex-col min-w-0"
           >
-            {/* Signature Element: Clash Display Heading + Overlapping IBM Plex Mono Badge */}
+            {/* Signature Element: Clash Display Heading + IBM Plex Mono Badge */}
             <div className="mb-4">
               <SignatureTitle />
             </div>
@@ -70,6 +71,7 @@ export default function DailyFocusPage() {
       <ImportExportModal />
       <SettingsModal />
       <ToastContainer />
+      <ReminderScheduler />
     </main>
   );
 }

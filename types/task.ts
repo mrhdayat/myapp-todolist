@@ -21,6 +21,7 @@ export interface Task {
   priority: TaskPriority;
   category: TaskCategory;
   dueDate?: string | null;
+  dueTime?: string | null;
   order: number;
   isRecurring: boolean;
   recurringConfig?: RecurringConfig;
@@ -61,6 +62,7 @@ export interface LegacyImportTask {
   priority?: string;
   category?: string;
   dueDate?: string | null;
+  dueTime?: string | null;
   order?: number;
   isRecurring?: boolean;
   recurringConfig?: RecurringConfig;

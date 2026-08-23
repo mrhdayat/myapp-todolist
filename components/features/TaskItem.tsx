@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, GripVertical, Calendar, Edit3, Check, X, Copy } from 'lucide-react';
+import { Trash2, GripVertical, Calendar, Clock, Edit3, Check, X, Copy } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTaskStore } from '@/store/useTaskStore';
 import { NeuCheckbox } from '@/components/ui/NeuCheckbox';
@@ -185,12 +185,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
               {displayTitle}
             </span>
 
-            {(task.dueDate || (task.description && task.description !== displayTitle)) && (
-              <div className="flex items-center gap-2 text-xs font-mono text-text-secondary mt-0.5">
+            {(task.dueDate || task.dueTime || (task.description && task.description !== displayTitle)) && (
+              <div className="flex items-center gap-2 text-xs font-mono text-text-secondary mt-0.5 flex-wrap">
                 {task.dueDate && (
                   <span className="flex items-center gap-1">
                     <IconWrapper icon={Calendar} size={12} />
                     <span>{task.dueDate}</span>
+                  </span>
+                )}
+                {task.dueTime && (
+                  <span className="flex items-center gap-1 font-semibold text-accent">
+                    <IconWrapper icon={Clock} size={12} />
+                    <span>{task.dueTime}</span>
                   </span>
                 )}
                 {task.description && task.description !== displayTitle && (
