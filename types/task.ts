@@ -4,6 +4,15 @@ export type TaskCategory = 'work' | 'personal' | 'health' | 'learning' | 'financ
 
 export type TaskStatus = 'pending' | 'done';
 
+export type RecurringType = 'none' | 'daily' | 'interval' | 'weekdays';
+
+export interface RecurringConfig {
+  type: RecurringType;
+  intervalDays?: number; // e.g. 3 for every 3 days
+  weekdays?: number[]; // [0, 1, 2, 3, 4, 5, 6] (0 = Sunday, 1 = Monday, etc.)
+  lastGeneratedDate?: string; // YYYY-MM-DD
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -14,6 +23,7 @@ export interface Task {
   dueDate?: string | null;
   order: number;
   isRecurring: boolean;
+  recurringConfig?: RecurringConfig;
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
@@ -52,6 +62,8 @@ export interface LegacyImportTask {
   category?: string;
   dueDate?: string | null;
   order?: number;
+  isRecurring?: boolean;
+  recurringConfig?: RecurringConfig;
   createdAt?: string;
   updatedAt?: string;
   date?: string;

@@ -1,6 +1,7 @@
 /**
  * Date utility helpers for Daily Focus
  */
+import { RecurringConfig } from '@/types/task';
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -67,4 +68,49 @@ export function getDayName(dateStr: string): string {
   } catch {
     return '';
   }
+}
+
+export function getDaysDifference(dateStrA: string, dateStrB: string): number {
+  try {
+    const [yA, mA, dA] = dateStrA.split('-').map(Number);
+    const [yB, mB, dB] = dateStrB.split('-').map(Number);
+    const dateA = new Date(yA, mA - 1, dA);
+    const dateB = new Date(yB, mB - 1, dB);
+    const diffTime = Math.abs(dateA.getTime() - dateB.getTime());
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  } catch {
+    return 0;
+  }
+}
+
+export function shouldGenerateRecurringTask(
+  config: RecurringConfig | undefined,
+  fallbackBaseDate: string | undefined,
+  targetDate: string
+): boolean {
+  if (!config || config.type === 'none') return false;
+  if (config.lastGeneratedDate === targetDate) return false;
+
+  const [y, m, d] = targetDate.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const dayOfWeek = target.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+
+  if (config.type === 'daily') {
+    return true;
+  }
+
+  if (config.type === 'interval') {
+    const interval = Number(config.intervalDays) || 3;
+    const baseDate = config.lastGeneratedDate || fallbackBaseDate;
+    if (!baseDate) return true;
+    const diff = getDaysDifference(baseDate, targetDate);
+    return diff >= interval;
+  }
+
+  if (config.type === 'weekdays') {
+    const days = config.weekdays || [1, 2, 3, 4, 5];
+    return days.includes(dayOfWeek);
+  }
+
+  return false;
 }

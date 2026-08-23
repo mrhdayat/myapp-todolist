@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { Task, AppSettings, DailyMetric, FilterOptions, ToastMessage, ThemePalette, ThemeMode } from '@/types/task';
+import { Task, AppSettings, DailyMetric, FilterOptions, ToastMessage, ThemePalette, ThemeMode, RecurringConfig } from '@/types/task';
 import { dbClient } from '@/lib/storage/db';
-import { getTodayDateString, isYesterday } from '@/lib/date-utils';
+import { getTodayDateString, isYesterday, shouldGenerateRecurringTask } from '@/lib/date-utils';
 import { soundManager } from '@/lib/sound';
 
 export interface TaskState {
@@ -20,7 +20,14 @@ export interface TaskState {
 
 export interface TaskActions {
   initializeStore: () => Promise<void>;
-  addTask: (title: string, priority?: Task['priority'], category?: Task['category'], dueDate?: string | null) => Promise<Task>;
+  addTask: (
+    title: string,
+    priority?: Task['priority'],
+    category?: Task['category'],
+    dueDate?: string | null,
+    isRecurring?: boolean,
+    recurringConfig?: RecurringConfig
+  ) => Promise<Task>;
   toggleTaskStatus: (id: string) => Promise<void>;
   updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -208,12 +215,67 @@ export const useTaskStore = create<TaskStore>()(
         updatedTasks = [...tasks];
       }
 
+      // Evaluate recurring tasks with custom intervals and schedules
+      const newlyGeneratedRecurring: Task[] = [];
+      const updatedExistingRecurring = updatedTasks.map(t => {
+        if (t.isRecurring && t.recurringConfig && t.recurringConfig.type !== 'none') {
+          if (shouldGenerateRecurringTask(t.recurringConfig, t.date, today)) {
+            // Ensure no duplicate task with identical title already exists today
+            const alreadyHasToday = updatedTasks.some(
+              existing => existing.date === today && existing.title.toLowerCase() === t.title.toLowerCase()
+            );
+
+            if (!alreadyHasToday) {
+              const now = new Date().toISOString();
+              const genTask: Task = {
+                id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'task_' + Math.random().toString(36).substring(2, 9) + Date.now(),
+                title: t.title,
+                description: t.description,
+                status: 'pending',
+                priority: t.priority,
+                category: t.category,
+                dueDate: t.dueDate,
+                order: updatedTasks.length + newlyGeneratedRecurring.length,
+                isRecurring: true,
+                recurringConfig: {
+                  ...t.recurringConfig,
+                  lastGeneratedDate: today,
+                },
+                createdAt: now,
+                updatedAt: now,
+                completedAt: null,
+                date: today,
+              };
+              newlyGeneratedRecurring.push(genTask);
+            }
+
+            return {
+              ...t,
+              recurringConfig: {
+                ...t.recurringConfig,
+                lastGeneratedDate: today,
+              },
+            };
+          }
+        }
+        return t;
+      });
+
+      const finalTasks = [...newlyGeneratedRecurring, ...updatedExistingRecurring];
+
       const newSettings: AppSettings = { ...settings, lastActiveDate: today, streak: newStreak, bestStreak };
-      set({ tasks: updatedTasks, settings: newSettings, metrics: updatedMetrics });
-      await Promise.all([dbClient.saveAllTasks(updatedTasks), dbClient.saveSettings(newSettings)]);
+      set({ tasks: finalTasks, settings: newSettings, metrics: updatedMetrics });
+      await Promise.all([dbClient.saveAllTasks(finalTasks), dbClient.saveSettings(newSettings)]);
     },
 
-    addTask: async (title, priority = 'normal', category = 'work', dueDate = null) => {
+    addTask: async (
+      title,
+      priority = 'normal',
+      category = 'work',
+      dueDate = null,
+      isRecurring = false,
+      recurringConfig = { type: 'none' }
+    ) => {
       const { tasks, settings } = get();
       const now = new Date().toISOString();
       const today = getTodayDateString();
@@ -226,7 +288,8 @@ export const useTaskStore = create<TaskStore>()(
         category,
         dueDate,
         order: tasks.length,
-        isRecurring: false,
+        isRecurring,
+        recurringConfig: isRecurring ? { ...recurringConfig, lastGeneratedDate: today } : undefined,
         createdAt: now,
         updatedAt: now,
         completedAt: null,
