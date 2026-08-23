@@ -1,10 +1,22 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { PwaRegistrar } from '@/components/features/PwaRegistrar';
 
 export const metadata: Metadata = {
   title: 'Daily Focus — Neumorphism Modern Task Manager',
-  description: 'Daily to-do and focus management app with warm porcelain neumorphic tactile design, 4 customizable themes, and high-contrast accents.',
-  keywords: ['todo', 'daily focus', 'productivity', 'neumorphism', 'task manager'],
+  description: 'Daily to-do and focus management app with warm porcelain neumorphic tactile design, 4 customizable themes, high-contrast accents, and offline support.',
+  keywords: ['todo', 'daily focus', 'productivity', 'neumorphism', 'task manager', 'offline pwa'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Daily Focus',
+  },
+  icons: {
+    icon: '/icons/icon-192x192.png',
+    shortcut: '/icons/icon-192x192.png',
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = {
@@ -72,6 +84,7 @@ export default function RootLayout({
       </head>
       <body className="bg-base text-text-primary antialiased min-h-screen overflow-x-hidden">
         {children}
+        <PwaRegistrar />
       </body>
     </html>
   );
