@@ -1,14 +1,17 @@
 'use client';
 
 import React from 'react';
-import { Search, X, Filter } from 'lucide-react';
+import { Search, X, CheckSquare, ListChecks } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
-import { TaskPriority, TaskCategory } from '@/types/task';
+import { TaskPriority } from '@/types/task';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 
 export const TaskFilters: React.FC = () => {
   const filters = useTaskStore((state) => state.filters);
   const setFilter = useTaskStore((state) => state.setFilter);
+  const tasks = useTaskStore((state) => state.tasks);
+  const isSelectionMode = useTaskStore((state) => state.isSelectionMode);
+  const toggleSelectionMode = useTaskStore((state) => state.toggleSelectionMode);
 
   const handleStatusChange = (status: 'all' | 'pending' | 'done') => {
     setFilter({ status });
@@ -17,27 +20,46 @@ export const TaskFilters: React.FC = () => {
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 select-none">
       {/* Status Segmented Buttons */}
-      <div className="flex items-center p-1 rounded-neu-md neu-inset gap-1">
-        {(
-          [
-            { id: 'all', label: 'Semua' },
-            { id: 'pending', label: 'Aktif' },
-            { id: 'done', label: 'Selesai' },
-          ] as const
-        ).map((tab) => (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center p-1 rounded-neu-md neu-inset gap-1">
+          {(
+            [
+              { id: 'all', label: 'Semua' },
+              { id: 'pending', label: 'Aktif' },
+              { id: 'done', label: 'Selesai' },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleStatusChange(tab.id)}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-neu-sm text-xs font-medium transition-all ${
+                filters.status === tab.id
+                  ? 'bg-base text-accent font-semibold shadow-[2px_2px_5px_var(--shadow-dark),-2px_-2px_5px_var(--shadow-light)]'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Multi-Select Toggle Button */}
+        {tasks.length > 0 && (
           <button
-            key={tab.id}
             type="button"
-            onClick={() => handleStatusChange(tab.id)}
-            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-neu-sm text-xs font-medium transition-all ${
-              filters.status === tab.id
-                ? 'bg-base text-accent font-semibold shadow-[2px_2px_5px_var(--shadow-dark),-2px_-2px_5px_var(--shadow-light)]'
-                : 'text-text-secondary hover:text-text-primary'
+            onClick={toggleSelectionMode}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-neu-sm text-xs font-semibold transition-all ${
+              isSelectionMode
+                ? 'neu-inset text-accent ring-1 ring-accent/30'
+                : 'neu-button text-text-secondary hover:text-text-primary'
             }`}
+            title="Mode multi-select untuk aksi massal"
           >
-            {tab.label}
+            <IconWrapper icon={isSelectionMode ? CheckSquare : ListChecks} size={14} />
+            <span>{isSelectionMode ? 'Batal' : 'Pilih'}</span>
           </button>
-        ))}
+        )}
       </div>
 
       {/* Search & Category Filter */}
@@ -52,7 +74,7 @@ export const TaskFilters: React.FC = () => {
             value={filters.searchQuery}
             onChange={(e) => setFilter({ searchQuery: e.target.value })}
             placeholder="Cari task..."
-            className="w-full bg-base text-text-primary placeholder:text-text-secondary/60 text-xs font-body rounded-neu-sm neu-inset py-2 pl-8 pr-7 outline-none focus:ring-1 focus:ring-accent"
+            className="w-full bg-base text-text-primary placeholder:text-text-secondary placeholder:opacity-75 text-xs font-body rounded-neu-sm neu-inset py-2 pl-8 pr-7 outline-none focus:ring-1 focus:ring-accent border border-[var(--border-subtle)]"
           />
           {filters.searchQuery && (
             <button
@@ -69,7 +91,7 @@ export const TaskFilters: React.FC = () => {
         <select
           value={filters.priority}
           onChange={(e) => setFilter({ priority: e.target.value as 'all' | TaskPriority })}
-          className="bg-base text-text-primary text-xs font-body rounded-neu-sm neu-inset py-2 px-2 outline-none cursor-pointer"
+          className="bg-base text-text-primary text-xs font-body rounded-neu-sm neu-inset py-2 px-2 outline-none cursor-pointer border border-[var(--border-subtle)]"
           aria-label="Filter berdasarkan prioritas"
         >
           <option value="all">Semua Prioritas</option>

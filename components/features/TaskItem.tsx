@@ -10,7 +10,7 @@ import { NeuBadge } from '@/components/ui/NeuBadge';
 import { NeuIconButton } from '@/components/ui/NeuIconButton';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 import { copyToClipboard } from '@/lib/clipboard';
-import { DURATION, EASE_ENTER, EASE_EXIT } from '@/lib/motion-tokens';
+import { DURATION, EASE_ENTER } from '@/lib/motion-tokens';
 
 interface TaskItemProps {
   task: Task;
@@ -22,6 +22,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   const deleteTask = useTaskStore((state) => state.deleteTask);
   const updateTask = useTaskStore((state) => state.updateTask);
   const addToast = useTaskStore((state) => state.addToast);
+  const isSelectionMode = useTaskStore((state) => state.isSelectionMode);
+  const selectedTaskIds = useTaskStore((state) => state.selectedTaskIds);
+  const toggleSelectTask = useTaskStore((state) => state.toggleSelectTask);
+  const isSelected = selectedTaskIds.includes(task.id);
 
   const rawRecord = task as unknown as Record<string, unknown>;
   const displayTitle =
@@ -43,6 +47,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
     toggleTaskStatus(task.id);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isSelectionMode && !isEditing) {
+      toggleSelectTask(task.id);
+    }
+  };
+
   const handleStartEdit = () => {
     setEditTitle(displayTitle);
     setIsEditing(true);
@@ -61,7 +71,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   };
 
   const handleCopyTask = async () => {
-    const textToCopy = `${isDone ? '✅ [Selesai]' : '⏳ [Belum]'} ${displayTitle}${task.dueDate ? ` (Target: ${task.dueDate})` : ''}`;
+    const textToCopy = `${isDone ? '✅ [Selesai]' : '⏳ [Belum]'} ${displayTitle}${
+      task.dueDate ? ` (Target: ${task.dueDate})` : ''
+    }${task.dueTime ? ` [${task.dueTime}]` : ''}`;
     const success = await copyToClipboard(textToCopy);
     if (success) {
       setJustCopied(true);
@@ -116,28 +128,43 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
         duration: DURATION.normal,
         ease: EASE_ENTER,
       }}
-      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] ${
-        isDone
+      onClick={handleCardClick}
+      className={`group rounded-neu-md p-3.5 sm:p-4 mb-3 select-none flex items-center justify-between gap-3 border border-[var(--border-subtle)] transition-all ${
+        isSelectionMode ? 'cursor-pointer' : ''
+      } ${
+        isSelected
+          ? 'neu-inset ring-2 ring-accent shadow-[inset_3px_3px_7px_var(--shadow-dark)]'
+          : isDone
           ? 'neu-inset'
           : isDragging
           ? 'neu-card ring-2 ring-accent/30 shadow-[8px_8px_20px_var(--shadow-dark)]'
           : 'neu-button hover:shadow-[6px_6px_14px_var(--shadow-dark),-6px_-6px_14px_var(--shadow-light)]'
       }`}
     >
-      {/* Left: Drag Handle & Checkbox */}
+      {/* Left: Drag Handle or Selection Checkbox */}
       <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
-        <div
-          className="text-text-secondary/40 group-hover:text-text-secondary/80 cursor-grab active:cursor-grabbing p-1 transition-colors touch-none"
-          title="Geser untuk mengatur urutan"
-        >
-          <IconWrapper icon={GripVertical} size={16} />
-        </div>
+        {!isSelectionMode && (
+          <div
+            className="text-text-secondary/40 group-hover:text-text-secondary/80 cursor-grab active:cursor-grabbing p-1 transition-colors touch-none"
+            title="Geser untuk mengatur urutan"
+          >
+            <IconWrapper icon={GripVertical} size={16} />
+          </div>
+        )}
 
-        <NeuCheckbox
-          checked={isDone}
-          onChange={handleToggle}
-          aria-label={`Tandai task "${displayTitle}" sebagai ${isDone ? 'belum selesai' : 'selesai'}`}
-        />
+        {isSelectionMode ? (
+          <NeuCheckbox
+            checked={isSelected}
+            onChange={() => toggleSelectTask(task.id)}
+            aria-label={`Pilih task "${displayTitle}"`}
+          />
+        ) : (
+          <NeuCheckbox
+            checked={isDone}
+            onChange={handleToggle}
+            aria-label={`Tandai task "${displayTitle}" sebagai ${isDone ? 'belum selesai' : 'selesai'}`}
+          />
+        )}
       </div>
 
       {/* Center: Title & Metadata */}

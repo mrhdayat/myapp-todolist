@@ -16,6 +16,8 @@ export interface TaskState {
   selectedTaskId: string | null;
   importModalOpen: boolean;
   settingsModalOpen: boolean;
+  isSelectionMode: boolean;
+  selectedTaskIds: string[];
 }
 
 export interface TaskActions {
@@ -44,6 +46,12 @@ export interface TaskActions {
   setSelectedTask: (id: string | null) => void;
   setImportModalOpen: (open: boolean) => void;
   setSettingsModalOpen: (open: boolean) => void;
+  toggleSelectionMode: () => void;
+  toggleSelectTask: (id: string) => void;
+  selectAllTasks: (ids?: string[]) => void;
+  clearSelection: () => void;
+  bulkCompleteTasks: (status: 'done' | 'pending') => Promise<void>;
+  bulkDeleteTasks: () => Promise<void>;
 }
 
 export type TaskStore = TaskState & TaskActions;
@@ -94,6 +102,8 @@ export const useTaskStore = create<TaskStore>()(
     selectedTaskId: null,
     importModalOpen: false,
     settingsModalOpen: false,
+    isSelectionMode: false,
+    selectedTaskIds: [],
 
     initializeStore: async () => {
       try {
@@ -435,5 +445,82 @@ export const useTaskStore = create<TaskStore>()(
     setSelectedTask: (id) => set({ selectedTaskId: id }),
     setImportModalOpen: (open) => set({ importModalOpen: open }),
     setSettingsModalOpen: (open) => set({ settingsModalOpen: open }),
+
+    toggleSelectionMode: () => {
+      set((state) => ({
+        isSelectionMode: !state.isSelectionMode,
+        selectedTaskIds: [],
+      }));
+    },
+
+    toggleSelectTask: (id: string) => {
+      set((state) => {
+        const exists = state.selectedTaskIds.includes(id);
+        return {
+          selectedTaskIds: exists
+            ? state.selectedTaskIds.filter((taskId) => taskId !== id)
+            : [...state.selectedTaskIds, id],
+        };
+      });
+    },
+
+    selectAllTasks: (ids?: string[]) => {
+      const { tasks } = get();
+      const targetIds = ids || tasks.map((t) => t.id);
+      set({ selectedTaskIds: targetIds });
+    },
+
+    clearSelection: () => {
+      set({ selectedTaskIds: [] });
+    },
+
+    bulkCompleteTasks: async (status: 'done' | 'pending') => {
+      const { tasks, selectedTaskIds, settings, addToast } = get();
+      if (selectedTaskIds.length === 0) return;
+
+      const now = new Date().toISOString();
+      const idSet = new Set(selectedTaskIds);
+      const updatedTasks = tasks.map((t) => {
+        if (idSet.has(t.id)) {
+          return {
+            ...t,
+            status,
+            completedAt: status === 'done' ? now : null,
+            updatedAt: now,
+          };
+        }
+        return t;
+      });
+
+      set({ tasks: updatedTasks, selectedTaskIds: [], isSelectionMode: false });
+      if (settings.soundEnabled) soundManager.playComplete();
+      await dbClient.saveAllTasks(updatedTasks);
+      addToast({
+        type: 'success',
+        title: status === 'done' ? 'Task Ditandai Selesai' : 'Task Diaktifkan Kembali',
+        description: `${selectedTaskIds.length} task berhasil diperbarui.`,
+      });
+    },
+
+    bulkDeleteTasks: async () => {
+      const { tasks, selectedTaskIds, settings, addToast } = get();
+      if (selectedTaskIds.length === 0) return;
+
+      const idSet = new Set(selectedTaskIds);
+      const tasksToDelete = tasks.filter((t) => idSet.has(t.id));
+      const remainingTasks = tasks.filter((t) => !idSet.has(t.id));
+      const count = tasksToDelete.length;
+
+      set({ tasks: remainingTasks, selectedTaskIds: [], isSelectionMode: false });
+      if (settings.soundEnabled) soundManager.playDelete();
+
+      await Promise.all(tasksToDelete.map((t) => dbClient.deleteTask(t.id)));
+
+      addToast({
+        type: 'info',
+        title: `${count} Task Dihapus`,
+        description: `${count} task berhasil dihapus.`,
+      });
+    },
   }))
 );
