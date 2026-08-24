@@ -7,6 +7,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 import { NeuButton } from '@/components/ui/NeuButton';
 import { NeuModal } from '@/components/ui/NeuModal';
+import { getTodayDateString } from '@/lib/date-utils';
 
 export const BulkActionBar: React.FC = () => {
   const isSelectionMode = useTaskStore((state) => state.isSelectionMode);
@@ -20,16 +21,19 @@ export const BulkActionBar: React.FC = () => {
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  const today = getTodayDateString();
+  const todayTasks = tasks.filter((t) => !t.date || t.date === today);
+
   if (!isSelectionMode) return null;
 
   const count = selectedTaskIds.length;
-  const isAllSelected = count > 0 && count === tasks.length;
+  const isAllSelected = count > 0 && count === todayTasks.length;
 
   const handleToggleSelectAll = () => {
     if (isAllSelected) {
       clearSelection();
     } else {
-      selectAllTasks();
+      selectAllTasks(todayTasks.map((t) => t.id));
     }
   };
 

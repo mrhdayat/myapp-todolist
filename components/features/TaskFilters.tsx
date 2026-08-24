@@ -5,6 +5,7 @@ import { Search, X, CheckSquare, ListChecks } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { TaskPriority } from '@/types/task';
 import { IconWrapper } from '@/components/ui/IconWrapper';
+import { getTodayDateString } from '@/lib/date-utils';
 
 export const TaskFilters: React.FC = () => {
   const filters = useTaskStore((state) => state.filters);
@@ -13,6 +14,9 @@ export const TaskFilters: React.FC = () => {
   const isSelectionMode = useTaskStore((state) => state.isSelectionMode);
   const toggleSelectionMode = useTaskStore((state) => state.toggleSelectionMode);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const today = getTodayDateString();
+  const todayTasks = tasks.filter((t) => !t.date || t.date === today);
 
   const handleStatusChange = (status: 'all' | 'pending' | 'done') => {
     setFilter({ status });
@@ -73,7 +77,7 @@ export const TaskFilters: React.FC = () => {
         </div>
 
         {/* Multi-Select Toggle Button */}
-        {tasks.length > 0 && (
+        {todayTasks.length > 0 && (
           <button
             type="button"
             onClick={toggleSelectionMode}

@@ -2,22 +2,25 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Reorder, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Inbox, PlusCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTaskStore } from '@/store/useTaskStore';
 import { Task } from '@/types/task';
 import { TaskItem } from './TaskItem';
 import { EmptyOnboardingState, FilterEmptyState } from './EmptyOnboardingState';
-import { IconWrapper } from '@/components/ui/IconWrapper';
+import { getTodayDateString } from '@/lib/date-utils';
 
 export const TaskList: React.FC = () => {
   const tasks = useTaskStore((state) => state.tasks);
   const filters = useTaskStore((state) => state.filters);
   const reorderTasks = useTaskStore((state) => state.reorderTasks);
   const prevAllDoneRef = useRef(false);
+  const today = getTodayDateString();
 
-  // Filter tasks based on status, priority, category, searchQuery
-  const filteredTasks = tasks.filter((task) => {
+  // Active tasks for today (fall back to true if date is missing on legacy items)
+  const todayTasks = tasks.filter((t) => !t.date || t.date === today);
+
+  // Filter today's tasks based on status, priority, category, searchQuery
+  const filteredTasks = todayTasks.filter((task) => {
     if (filters.status === 'pending' && task.status !== 'pending') return false;
     if (filters.status === 'done' && task.status !== 'done') return false;
     if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
@@ -33,8 +36,8 @@ export const TaskList: React.FC = () => {
 
   // Check if all today's tasks are completed to fire celebration confetti
   useEffect(() => {
-    if (tasks.length > 0) {
-      const allDone = tasks.every((t) => t.status === 'done');
+    if (todayTasks.length > 0) {
+      const allDone = todayTasks.every((t) => t.status === 'done');
       if (allDone && !prevAllDoneRef.current) {
         confetti({
           particleCount: 80,
@@ -47,17 +50,17 @@ export const TaskList: React.FC = () => {
     } else {
       prevAllDoneRef.current = false;
     }
-  }, [tasks]);
+  }, [todayTasks]);
 
   const handleReorder = (newOrder: Task[]) => {
-    // Merge new order for filtered items back into overall tasks list
+    // Merge new order for today's filtered items back into overall tasks list
     const filteredIdSet = new Set(newOrder.map((t) => t.id));
     const nonFiltered = tasks.filter((t) => !filteredIdSet.has(t.id));
     const combined = [...newOrder, ...nonFiltered];
     reorderTasks(combined);
   };
 
-  if (tasks.length === 0) {
+  if (todayTasks.length === 0) {
     return <EmptyOnboardingState />;
   }
 

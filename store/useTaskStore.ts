@@ -186,7 +186,25 @@ export const useTaskStore = create<TaskStore>()(
       const today = getTodayDateString();
       const lastDate = settings.lastActiveDate;
 
-      if (!lastDate || lastDate === today) return;
+      console.log('[DailyReset] Checking daily reset:', {
+        lastActiveDate: lastDate,
+        today,
+        autoResetBehavior: settings.autoResetBehavior,
+        needsReset: Boolean(lastDate && lastDate !== today),
+      });
+
+      // If no lastActiveDate stored yet (first launch), set it to today and persist immediately
+      if (!lastDate) {
+        const newSettings: AppSettings = { ...settings, lastActiveDate: today };
+        set({ settings: newSettings });
+        await dbClient.saveSettings(newSettings);
+        return;
+      }
+
+      // If already processed for today, do nothing
+      if (lastDate === today) {
+        return;
+      }
 
       const isConsecutive = isYesterday(lastDate);
       const yesterdayTasks = tasks.filter(t => t.date === lastDate);
@@ -215,51 +233,82 @@ export const useTaskStore = create<TaskStore>()(
       }
 
       let updatedTasks: Task[];
-      if (settings.autoResetBehavior === 'carry-over') {
+      const isCarryOver = settings.autoResetBehavior === 'carry-over';
+
+      if (isCarryOver) {
+        // Carry-over mode: Move non-recurring pending tasks from past days into today
         updatedTasks = tasks.map(t => {
-          if (t.status === 'pending') {
+          if (t.status === 'pending' && !t.isRecurring && t.date !== today) {
             return { ...t, date: today, updatedAt: new Date().toISOString() };
           }
           return t;
         });
       } else {
+        // Archive mode: All past tasks remain archived with their original past date
         updatedTasks = [...tasks];
       }
 
-      // Evaluate recurring tasks with custom intervals and schedules
-      const newlyGeneratedRecurring: Task[] = [];
-      const updatedExistingRecurring = updatedTasks.map(t => {
+      // Collect recurring templates and generate fresh instances for today
+      const recurringTemplates = new Map<string, Task>();
+      tasks.forEach(t => {
         if (t.isRecurring && t.recurringConfig && t.recurringConfig.type !== 'none') {
-          if (shouldGenerateRecurringTask(t.recurringConfig, t.date, today)) {
-            // Ensure no duplicate task with identical title already exists today
-            const alreadyHasToday = updatedTasks.some(
-              existing => existing.date === today && existing.title.toLowerCase() === t.title.toLowerCase()
-            );
+          const key = t.title.trim().toLowerCase();
+          if (!recurringTemplates.has(key)) {
+            recurringTemplates.set(key, t);
+          }
+        }
+      });
 
-            if (!alreadyHasToday) {
-              const now = new Date().toISOString();
-              const genTask: Task = {
-                id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'task_' + Math.random().toString(36).substring(2, 9) + Date.now(),
-                title: t.title,
-                description: t.description,
-                status: 'pending',
-                priority: t.priority,
-                category: t.category,
-                dueDate: t.dueDate,
-                order: updatedTasks.length + newlyGeneratedRecurring.length,
-                isRecurring: true,
-                recurringConfig: {
-                  ...t.recurringConfig,
-                  lastGeneratedDate: today,
-                },
-                createdAt: now,
-                updatedAt: now,
-                completedAt: null,
-                date: today,
-              };
-              newlyGeneratedRecurring.push(genTask);
-            }
+      const newlyGeneratedRecurring: Task[] = [];
+      const now = new Date().toISOString();
 
+      Array.from(recurringTemplates.values()).forEach((template) => {
+        const config = template.recurringConfig!;
+        const baseDate = config.lastGeneratedDate || template.date || lastDate;
+
+        if (shouldGenerateRecurringTask(config, baseDate, today)) {
+          // Verify no duplicate task with identical title exists for today
+          const alreadyExistsToday = updatedTasks.some(
+            existing =>
+              (existing.date === today || !existing.date) &&
+              existing.title.trim().toLowerCase() === template.title.trim().toLowerCase()
+          );
+
+          if (!alreadyExistsToday) {
+            const genTask: Task = {
+              id: typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : 'task_' + Math.random().toString(36).substring(2, 9) + Date.now(),
+              title: template.title,
+              description: template.description,
+              status: 'pending', // Fresh pending state
+              priority: template.priority,
+              category: template.category,
+              dueDate: template.dueDate,
+              dueTime: template.dueTime || null,
+              order: updatedTasks.length + newlyGeneratedRecurring.length,
+              isRecurring: true,
+              recurringConfig: {
+                ...config,
+                lastGeneratedDate: today,
+              },
+              createdAt: now,
+              updatedAt: now,
+              completedAt: null, // Fresh uncompleted
+              date: today,
+            };
+            newlyGeneratedRecurring.push(genTask);
+          }
+        }
+      });
+
+      // Update recurringConfig.lastGeneratedDate on template tasks
+      const finalExistingTasks = updatedTasks.map(t => {
+        if (t.isRecurring && t.recurringConfig) {
+          const matched = newlyGeneratedRecurring.find(
+            g => g.title.trim().toLowerCase() === t.title.trim().toLowerCase()
+          );
+          if (matched) {
             return {
               ...t,
               recurringConfig: {
@@ -272,11 +321,20 @@ export const useTaskStore = create<TaskStore>()(
         return t;
       });
 
-      const finalTasks = [...newlyGeneratedRecurring, ...updatedExistingRecurring];
+      const finalTasks = [...newlyGeneratedRecurring, ...finalExistingTasks];
 
-      const newSettings: AppSettings = { ...settings, lastActiveDate: today, streak: newStreak, bestStreak };
+      const newSettings: AppSettings = {
+        ...settings,
+        lastActiveDate: today,
+        streak: newStreak,
+        bestStreak,
+      };
+
       set({ tasks: finalTasks, settings: newSettings, metrics: updatedMetrics });
-      await Promise.all([dbClient.saveAllTasks(finalTasks), dbClient.saveSettings(newSettings)]);
+      await Promise.all([
+        dbClient.saveAllTasks(finalTasks),
+        dbClient.saveSettings(newSettings),
+      ]);
     },
 
     addTask: async (

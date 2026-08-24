@@ -3,18 +3,20 @@
  */
 import { RecurringConfig } from '@/types/task';
 
-export function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+/**
+ * Pure local date string YYYY-MM-DD (immune to UTC timezone shifts)
+ */
+export function getTodayDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
 export function formatDateDisplay(dateStr: string, locale: string = 'id-ID'): string {
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
+    const date = new Date(y, m - 1, d, 0, 0, 0, 0);
     return date.toLocaleDateString(locale, {
       weekday: 'long',
       day: 'numeric',
@@ -29,7 +31,7 @@ export function formatDateDisplay(dateStr: string, locale: string = 'id-ID'): st
 export function formatShortDate(dateStr: string): string {
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
+    const date = new Date(y, m - 1, d, 0, 0, 0, 0);
     return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
@@ -40,11 +42,17 @@ export function formatShortDate(dateStr: string): string {
 }
 
 export function isYesterday(dateStr: string): boolean {
-  const today = new Date();
-  const target = new Date(dateStr);
-  const diffTime = today.setHours(0, 0, 0, 0) - target.setHours(0, 0, 0, 0);
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays === 1;
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const target = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const diffTime = today.getTime() - target.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays === 1;
+  } catch {
+    return false;
+  }
 }
 
 export function getPast7Days(): string[] {
@@ -52,10 +60,7 @@ export function getPast7Days(): string[] {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    days.push(`${year}-${month}-${day}`);
+    days.push(getTodayDateString(d));
   }
   return days;
 }
@@ -63,7 +68,7 @@ export function getPast7Days(): string[] {
 export function getDayName(dateStr: string): string {
   try {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
+    const date = new Date(y, m - 1, d, 0, 0, 0, 0);
     return date.toLocaleDateString('id-ID', { weekday: 'short' });
   } catch {
     return '';
@@ -74,8 +79,8 @@ export function getDaysDifference(dateStrA: string, dateStrB: string): number {
   try {
     const [yA, mA, dA] = dateStrA.split('-').map(Number);
     const [yB, mB, dB] = dateStrB.split('-').map(Number);
-    const dateA = new Date(yA, mA - 1, dA);
-    const dateB = new Date(yB, mB - 1, dB);
+    const dateA = new Date(yA, mA - 1, dA, 0, 0, 0, 0);
+    const dateB = new Date(yB, mB - 1, dB, 0, 0, 0, 0);
     const diffTime = Math.abs(dateA.getTime() - dateB.getTime());
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
   } catch {
@@ -92,7 +97,7 @@ export function shouldGenerateRecurringTask(
   if (config.lastGeneratedDate === targetDate) return false;
 
   const [y, m, d] = targetDate.split('-').map(Number);
-  const target = new Date(y, m - 1, d);
+  const target = new Date(y, m - 1, d, 0, 0, 0, 0);
   const dayOfWeek = target.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
 
   if (config.type === 'daily') {
