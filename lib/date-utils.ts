@@ -41,9 +41,21 @@ export function formatShortDate(dateStr: string): string {
   }
 }
 
-export function isYesterday(dateStr: string): boolean {
+export function formatYearMonth(dateStr: string): string {
   try {
-    const today = new Date();
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      return `${parts[0]}-${parts[1]}`;
+    }
+    return dateStr.substring(0, 7);
+  } catch {
+    return dateStr;
+  }
+}
+
+export function isYesterday(dateStr: string, baseDate: Date = new Date()): boolean {
+  try {
+    const today = new Date(baseDate);
     today.setHours(0, 0, 0, 0);
     const [y, m, d] = dateStr.split('-').map(Number);
     const target = new Date(y, m - 1, d, 0, 0, 0, 0);
@@ -55,10 +67,18 @@ export function isYesterday(dateStr: string): boolean {
   }
 }
 
-export function getPast7Days(): string[] {
+/**
+ * Returns true if dateStrA is strictly before dateStrB (lexicographical / calendar check)
+ */
+export function isBeforeDate(dateStrA: string, dateStrB: string): boolean {
+  if (!dateStrA || !dateStrB) return false;
+  return dateStrA < dateStrB;
+}
+
+export function getPast7Days(referenceDate: Date = new Date()): string[] {
   const days: string[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
+    const d = new Date(referenceDate);
     d.setDate(d.getDate() - i);
     days.push(getTodayDateString(d));
   }
@@ -86,6 +106,24 @@ export function getDaysDifference(dateStrA: string, dateStrB: string): number {
   } catch {
     return 0;
   }
+}
+
+/**
+ * Calculates exact milliseconds remaining until next local midnight (00:00:01)
+ */
+export function calculateMidnightTimeout(): number {
+  const now = new Date();
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    1,
+    0
+  );
+  const ms = nextMidnight.getTime() - now.getTime();
+  return Math.max(1000, ms);
 }
 
 export function shouldGenerateRecurringTask(

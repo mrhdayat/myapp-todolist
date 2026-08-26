@@ -16,8 +16,9 @@ export const SignatureTitle: React.FC = () => {
   const today = getTodayDateString();
 
   const todayTasks = tasks.filter((t) => !t.date || t.date === today);
-  const completedCount = todayTasks.filter((t) => t.status === 'done').length;
-  const totalCount = todayTasks.length;
+  const activeTodayTasks = todayTasks.filter((t) => !t.isPaused);
+  const completedCount = activeTodayTasks.filter((t) => t.status === 'done').length;
+  const totalCount = activeTodayTasks.length;
   const isAllDone = totalCount > 0 && completedCount === totalCount;
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 

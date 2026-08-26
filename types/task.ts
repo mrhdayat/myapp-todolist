@@ -26,6 +26,7 @@ export interface Task {
   isRecurring: boolean;
   recurringConfig?: RecurringConfig;
   isOneTime?: boolean;
+  isPaused?: boolean;
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
@@ -39,6 +40,16 @@ export interface DailyMetric {
   completionRate: number;
 }
 
+export interface MonthlyMetricSummary {
+  month: string; // YYYY-MM
+  totalCompleted: number;
+  totalTasks: number;
+  avgCompletionRate: number;
+  daysTracked: number;
+  perfectDays: number;
+  updatedAt: string;
+}
+
 export type AutoResetBehavior = 'carry-over' | 'archive';
 
 export type ThemePalette = 'warm-clay' | 'blob-pastel' | 'ocean-breeze' | 'midnight-carbon';
@@ -50,9 +61,13 @@ export interface AppSettings {
   reducedMotion: boolean;
   soundEnabled: boolean;
   autoResetBehavior: AutoResetBehavior;
+  firstActiveDate?: string; // YYYY-MM-DD (recorded on Day 1)
   lastActiveDate: string; // YYYY-MM-DD
   streak: number;
   bestStreak: number;
+  schemaVersion?: number; // Versioning for migrations (current = 2)
+  retentionDays?: number; // Granular retention in days (default = 90)
+  autoCleanArchivedMonths?: number; // Months of archived history before purge (default = 3, 0 = never)
 }
 
 export interface LegacyImportTask {
@@ -68,6 +83,7 @@ export interface LegacyImportTask {
   isRecurring?: boolean;
   recurringConfig?: RecurringConfig;
   isOneTime?: boolean;
+  isPaused?: boolean;
   createdAt?: string;
   updatedAt?: string;
   date?: string;
@@ -75,9 +91,12 @@ export interface LegacyImportTask {
 
 export interface ImportPayload {
   version?: number;
+  schemaVersion?: number;
   exportedAt?: string;
   theme?: string;
   tasks: LegacyImportTask[];
+  metrics?: DailyMetric[];
+  monthlySummaries?: MonthlyMetricSummary[];
 }
 
 export interface ImportAnalysis {
@@ -110,3 +129,9 @@ export interface ToastMessage {
     onClick: () => void;
   };
 }
+
+export type SyncMessage =
+  | { type: 'TASKS_SYNC'; tasks: Task[]; timestamp: number }
+  | { type: 'SETTINGS_SYNC'; settings: AppSettings; timestamp: number }
+  | { type: 'DAILY_RESET_NOTIFY'; date: string; timestamp: number }
+  | { type: 'MUTATION_OCCURRED'; source: string; timestamp: number };

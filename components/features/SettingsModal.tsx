@@ -279,6 +279,34 @@ export const SettingsModal: React.FC = () => {
           </div>
         </NeuCard>
 
+        {/* Storage, Auto-Backup & Retention */}
+        <NeuCard padding="sm" className="border border-[var(--shadow-dark)]/15 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🛡️</span>
+              <div>
+                <h4 className="text-xs sm:text-sm font-semibold text-text-primary">
+                  Penyimpanan & Auto-Backup Lokal
+                </h4>
+                <p className="text-[11px] text-text-secondary">
+                  Histori 90 hari aktif, ringkasan bulanan otomatis jangka panjang.
+                </p>
+              </div>
+            </div>
+            <NeuButton
+              variant="default"
+              size="sm"
+              onClick={async () => {
+                const restored = await useTaskStore.getState().restoreAutoBackup();
+                if (restored) setIsOpen(false);
+              }}
+              className="text-xs"
+            >
+              Pulihkan Snapshot
+            </NeuButton>
+          </div>
+        </NeuCard>
+
         {/* Danger Zone: Reset Data */}
         <div className="pt-2 border-t border-[var(--shadow-dark)]/15 flex items-center justify-between">
           {!confirmReset ? (

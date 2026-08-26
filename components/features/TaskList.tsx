@@ -34,10 +34,11 @@ export const TaskList: React.FC = () => {
     return true;
   });
 
-  // Check if all today's tasks are completed to fire celebration confetti
+  // Check if all today's active tasks are completed to fire celebration confetti
   useEffect(() => {
-    if (todayTasks.length > 0) {
-      const allDone = todayTasks.every((t) => t.status === 'done');
+    const activeTasks = todayTasks.filter((t) => !t.isPaused);
+    if (activeTasks.length > 0) {
+      const allDone = activeTasks.every((t) => t.status === 'done');
       if (allDone && !prevAllDoneRef.current) {
         confetti({
           particleCount: 80,

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PwaRegistrar } from '@/components/features/PwaRegistrar';
+import { ErrorRecoveryBoundary } from '@/components/features/ErrorRecoveryBoundary';
 
 export const metadata: Metadata = {
   title: 'Daily Focus — Neumorphism Modern Task Manager',
@@ -83,7 +84,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-base text-text-primary antialiased min-h-screen overflow-x-hidden">
-        {children}
+        <ErrorRecoveryBoundary>
+          {children}
+        </ErrorRecoveryBoundary>
         <PwaRegistrar />
       </body>
     </html>

@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Task, AppSettings, DailyMetric } from '@/types/task';
+import { Task, AppSettings, DailyMetric, MonthlyMetricSummary } from '@/types/task';
+import { getTodayDateString, formatYearMonth, getDaysDifference } from '@/lib/date-utils';
 
 interface DailyFocusDB extends DBSchema {
   tasks: {
@@ -19,10 +20,15 @@ interface DailyFocusDB extends DBSchema {
     key: string;
     value: DailyMetric;
   };
+  monthly_summaries: {
+    key: string;
+    value: MonthlyMetricSummary;
+  };
 }
 
 const DB_NAME = 'daily-focus-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const AUTO_BACKUP_KEY = 'daily_focus_auto_backup';
 
 let dbPromise: Promise<IDBPDatabase<DailyFocusDB>> | null = null;
 
@@ -30,7 +36,7 @@ function getDB(): Promise<IDBPDatabase<DailyFocusDB>> | null {
   if (typeof window === 'undefined') return null;
   if (!dbPromise) {
     dbPromise = openDB<DailyFocusDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains('tasks')) {
           const taskStore = db.createObjectStore('tasks', { keyPath: 'id' });
           taskStore.createIndex('by-date', 'date');
@@ -42,6 +48,9 @@ function getDB(): Promise<IDBPDatabase<DailyFocusDB>> | null {
         }
         if (!db.objectStoreNames.contains('metrics')) {
           db.createObjectStore('metrics', { keyPath: 'date' });
+        }
+        if (!db.objectStoreNames.contains('monthly_summaries')) {
+          db.createObjectStore('monthly_summaries', { keyPath: 'month' });
         }
       },
     });
@@ -55,7 +64,8 @@ export const dbClient = {
       const db = await getDB();
       if (!db) return this.getLocalTasks();
       return await db.getAll('tasks');
-    } catch {
+    } catch (err) {
+      console.warn('[DB] Failed to getAllTasks, using fallback:', err);
       return this.getLocalTasks();
     }
   },
@@ -63,13 +73,12 @@ export const dbClient = {
   async saveTask(task: Task): Promise<void> {
     try {
       const db = await getDB();
-      if (!db) {
-        this.saveLocalTask(task);
-        return;
+      if (db) {
+        await db.put('tasks', task);
       }
-      await db.put('tasks', task);
-      this.saveLocalTask(task); // sync backup
-    } catch {
+      this.saveLocalTask(task);
+    } catch (err) {
+      console.warn('[DB] Failed to saveTask:', err);
       this.saveLocalTask(task);
     }
   },
@@ -88,7 +97,8 @@ export const dbClient = {
       if (typeof window !== 'undefined') {
         localStorage.setItem('daily-focus-tasks', JSON.stringify(tasks));
       }
-    } catch {
+    } catch (err) {
+      console.warn('[DB] Failed to saveAllTasks:', err);
       if (typeof window !== 'undefined') {
         localStorage.setItem('daily-focus-tasks', JSON.stringify(tasks));
       }
@@ -151,7 +161,7 @@ export const dbClient = {
         await db.put('metrics', metric);
       }
       const local = this.getLocalMetrics();
-      const idx = local.findIndex(m => m.date === metric.date);
+      const idx = local.findIndex((m) => m.date === metric.date);
       if (idx >= 0) {
         local[idx] = metric;
       } else {
@@ -162,6 +172,146 @@ export const dbClient = {
       }
     } catch {
       // fallback
+    }
+  },
+
+  async getAllMonthlySummaries(): Promise<MonthlyMetricSummary[]> {
+    try {
+      const db = await getDB();
+      if (!db) return this.getLocalMonthlySummaries();
+      return await db.getAll('monthly_summaries');
+    } catch {
+      return this.getLocalMonthlySummaries();
+    }
+  },
+
+  async saveMonthlySummary(summary: MonthlyMetricSummary): Promise<void> {
+    try {
+      const db = await getDB();
+      if (db) {
+        await db.put('monthly_summaries', summary);
+      }
+      const local = this.getLocalMonthlySummaries();
+      const idx = local.findIndex((s) => s.month === summary.month);
+      if (idx >= 0) {
+        local[idx] = summary;
+      } else {
+        local.push(summary);
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daily-focus-monthly-summaries', JSON.stringify(local));
+      }
+    } catch {
+      // fallback
+    }
+  },
+
+  /**
+   * Data Retention & Monthly Aggregation:
+   * Keeps raw daily logs for the last 90 days.
+   * Summarizes daily logs >90 days into MonthlyMetricSummary records and prunes the raw entries.
+   */
+  async runDataRetentionPrune(
+    currentMetrics: DailyMetric[],
+    retentionDays: number = 90
+  ): Promise<{ remainingMetrics: DailyMetric[]; generatedSummaries: MonthlyMetricSummary[] }> {
+    const today = getTodayDateString();
+    const olderMetrics: DailyMetric[] = [];
+    const remainingMetrics: DailyMetric[] = [];
+
+    currentMetrics.forEach((m) => {
+      const diff = getDaysDifference(m.date, today);
+      if (diff > retentionDays) {
+        olderMetrics.push(m);
+      } else {
+        remainingMetrics.push(m);
+      }
+    });
+
+    if (olderMetrics.length === 0) {
+      return { remainingMetrics: currentMetrics, generatedSummaries: [] };
+    }
+
+    console.log(`[Retention] Summarizing and pruning ${olderMetrics.length} daily logs older than ${retentionDays} days...`);
+
+    // Group older metrics by YYYY-MM
+    const monthGroups = new Map<string, DailyMetric[]>();
+    olderMetrics.forEach((m) => {
+      const month = formatYearMonth(m.date);
+      if (!monthGroups.has(month)) {
+        monthGroups.set(month, []);
+      }
+      monthGroups.get(month)!.push(m);
+    });
+
+    const generatedSummaries: MonthlyMetricSummary[] = [];
+    const db = await getDB();
+
+    for (const [month, metricsList] of Array.from(monthGroups.entries())) {
+      const totalCompleted = metricsList.reduce((acc, m) => acc + m.completedCount, 0);
+      const totalTasks = metricsList.reduce((acc, m) => acc + m.totalCount, 0);
+      const avgCompletionRate = Math.round(
+        metricsList.reduce((acc, m) => acc + m.completionRate, 0) / metricsList.length
+      );
+      const daysTracked = metricsList.length;
+      const perfectDays = metricsList.filter((m) => m.completionRate === 100).length;
+
+      const summary: MonthlyMetricSummary = {
+        month,
+        totalCompleted,
+        totalTasks,
+        avgCompletionRate,
+        daysTracked,
+        perfectDays,
+        updatedAt: new Date().toISOString(),
+      };
+
+      generatedSummaries.push(summary);
+      await this.saveMonthlySummary(summary);
+    }
+
+    // Prune old raw metrics from DB
+    if (db) {
+      const tx = db.transaction('metrics', 'readwrite');
+      for (const m of olderMetrics) {
+        await tx.store.delete(m.date);
+      }
+      await tx.done;
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daily-focus-metrics', JSON.stringify(remainingMetrics));
+    }
+
+    return { remainingMetrics, generatedSummaries };
+  },
+
+  /**
+   * Safety Net: Auto-backup snapshot to localStorage
+   */
+  saveAutoBackup(tasks: Task[], settings: AppSettings, metrics: DailyMetric[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const backupPayload = {
+        timestamp: Date.now(),
+        exportedAt: new Date().toISOString(),
+        tasks,
+        settings,
+        metrics,
+      };
+      localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(backupPayload));
+    } catch {
+      // quota or storage error
+    }
+  },
+
+  getAutoBackupSnapshot(): { tasks: Task[]; settings: AppSettings; metrics: DailyMetric[] } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(AUTO_BACKUP_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
     }
   },
 
@@ -178,7 +328,7 @@ export const dbClient = {
 
   saveLocalTask(task: Task): void {
     const tasks = this.getLocalTasks();
-    const idx = tasks.findIndex(t => t.id === task.id);
+    const idx = tasks.findIndex((t) => t.id === task.id);
     if (idx >= 0) {
       tasks[idx] = task;
     } else {
@@ -190,7 +340,7 @@ export const dbClient = {
   },
 
   deleteLocalTask(id: string): void {
-    const tasks = this.getLocalTasks().filter(t => t.id !== id);
+    const tasks = this.getLocalTasks().filter((t) => t.id !== id);
     if (typeof window !== 'undefined') {
       localStorage.setItem('daily-focus-tasks', JSON.stringify(tasks));
     }
@@ -214,5 +364,15 @@ export const dbClient = {
     } catch {
       return [];
     }
-  }
+  },
+
+  getLocalMonthlySummaries(): MonthlyMetricSummary[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('daily-focus-monthly-summaries');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
 };

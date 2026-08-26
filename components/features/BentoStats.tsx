@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Flame, CheckCircle2, TrendingUp, BarChart2, ShieldAlert } from 'lucide-react';
+import { Flame, CheckCircle2, TrendingUp, BarChart2, ShieldAlert, Calendar } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
-import { getTodayDateString, getPast7Days, getDayName } from '@/lib/date-utils';
+import { getTodayDateString, getPast7Days, getDayName, isBeforeDate } from '@/lib/date-utils';
 import { NeuCard } from '@/components/ui/NeuCard';
 import { IconWrapper } from '@/components/ui/IconWrapper';
 import { DURATION, EASE_STANDARD } from '@/lib/motion-tokens';
@@ -13,19 +13,25 @@ export const BentoStats: React.FC = () => {
   const tasks = useTaskStore((state) => state.tasks);
   const settings = useTaskStore((state) => state.settings);
   const metrics = useTaskStore((state) => state.metrics);
+  const monthlySummaries = useTaskStore((state) => state.monthlySummaries);
 
   const today = getTodayDateString();
+  const firstActiveDate = settings.firstActiveDate || settings.lastActiveDate || today;
   const todayTasks = tasks.filter((t) => !t.date || t.date === today);
-  const completedToday = todayTasks.filter((t) => t.status === 'done').length;
-  const totalToday = todayTasks.length;
+  const activeTodayTasks = todayTasks.filter((t) => !t.isPaused);
+  const completedToday = activeTodayTasks.filter((t) => t.status === 'done').length;
+  const totalToday = activeTodayTasks.length;
   const completionRate = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
 
-  const urgentTasks = todayTasks.filter((t) => t.priority === 'urgent' && t.status === 'pending');
+  const urgentTasks = activeTodayTasks.filter((t) => t.priority === 'urgent' && t.status === 'pending');
 
-  // Past 7 days data for weekly chart
+  // Past 7 days rolling calendar window [today - 6 ... today]
   const past7Days = getPast7Days();
   const weekData = past7Days.map((dateStr) => {
-    if (dateStr === today) {
+    const isToday = dateStr === today;
+    const isBeforeFirstUse = isBeforeDate(dateStr, firstActiveDate);
+
+    if (isToday) {
       return {
         date: dateStr,
         dayName: 'Hari Ini',
@@ -33,10 +39,24 @@ export const BentoStats: React.FC = () => {
         total: totalToday,
         rate: completionRate,
         isToday: true,
+        isBeforeFirstUse: false,
       };
     }
+
+    if (isBeforeFirstUse) {
+      return {
+        date: dateStr,
+        dayName: getDayName(dateStr),
+        completed: 0,
+        total: 0,
+        rate: 0,
+        isToday: false,
+        isBeforeFirstUse: true,
+      };
+    }
+
     const foundMetric = metrics.find((m) => m.date === dateStr);
-    const dayTasks = tasks.filter((t) => t.date === dateStr);
+    const dayTasks = tasks.filter((t) => t.date === dateStr && !t.isPaused);
     const done = dayTasks.filter((t) => t.status === 'done').length;
     const total = dayTasks.length;
     const rate = total > 0 ? Math.round((done / total) * 100) : foundMetric ? foundMetric.completionRate : 0;
@@ -48,8 +68,13 @@ export const BentoStats: React.FC = () => {
       total: total > 0 ? total : foundMetric ? foundMetric.totalCount : 0,
       rate,
       isToday: false,
+      isBeforeFirstUse: false,
     };
   });
+
+  const activeDaysCount = weekData.filter((d) => !d.isBeforeFirstUse).length;
+  const activeRateSum = weekData.filter((d) => !d.isBeforeFirstUse).reduce((acc, d) => acc + d.rate, 0);
+  const averageRate = activeDaysCount > 0 ? Math.round(activeRateSum / activeDaysCount) : 0;
 
   return (
     <div className="w-full flex flex-col gap-4 sm:gap-5 select-none min-w-0">
@@ -60,7 +85,7 @@ export const BentoStats: React.FC = () => {
           Statistik & Konsistensi
         </h2>
         <span className="font-mono text-xs text-text-secondary">
-          7 Hari Terakhir
+          7 Hari Terakhir (Rolling)
         </span>
       </div>
 
@@ -98,7 +123,7 @@ export const BentoStats: React.FC = () => {
               />
             </div>
             <div className="flex justify-between text-[11px] font-mono text-text-secondary mt-1.5">
-              <span>Mulai (0%)</span>
+              <span>0%</span>
               <span>Target 100%</span>
             </div>
           </div>
@@ -113,10 +138,10 @@ export const BentoStats: React.FC = () => {
               </span>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="font-display font-bold text-3xl sm:text-4xl text-text-primary">
-                  {settings.streak || 1}
+                  {settings.streak || 0}
                 </span>
                 <span className="font-body text-sm font-medium text-text-secondary">
-                  Hari Beruntun
+                  Hari Beruntun (100% Selesai)
                 </span>
               </div>
             </div>
@@ -128,19 +153,19 @@ export const BentoStats: React.FC = () => {
           <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs font-body text-text-secondary">
             <span>Rekor Terbaik:</span>
             <span className="font-mono font-bold text-text-primary px-2 py-0.5 rounded-neu-sm bg-base neu-inset-sm">
-              {settings.bestStreak || settings.streak || 1} Hari
+              {settings.bestStreak || settings.streak || 0} Hari
             </span>
           </div>
         </NeuCard>
 
-        {/* Card 3: 7-Day Activity Chart (Capsule Pill Shape) */}
+        {/* Card 3: 7-Day Activity Chart with Partial / Pre-use State Support */}
         <NeuCard padding="lg" className="w-full flex flex-col justify-between min-w-0 border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary">
               Aktivitas 7 Hari
             </span>
             <span className="text-[11px] font-mono text-text-secondary font-medium">
-              Rata-rata: {Math.round(weekData.reduce((acc, d) => acc + d.rate, 0) / 7)}%
+              Rata-rata: {averageRate}%
             </span>
           </div>
 
@@ -154,38 +179,52 @@ export const BentoStats: React.FC = () => {
                   <div className="w-full flex-1 flex items-end justify-center">
                     {/* Fixed Capsule Track */}
                     <div
-                      className={`w-full max-w-[20px] h-full rounded-full neu-inset p-0.5 flex flex-col justify-end overflow-hidden border ${
-                        item.isToday
-                          ? 'border-accent/40 ring-1 ring-accent/30'
-                          : 'border-[var(--border-subtle)]'
+                      className={`w-full max-w-[20px] h-full rounded-full p-0.5 flex flex-col justify-end overflow-hidden border transition-all ${
+                        item.isBeforeFirstUse
+                          ? 'border-dashed border-[var(--border-subtle)]/60 bg-base/30'
+                          : item.isToday
+                          ? 'border-accent/40 ring-1 ring-accent/30 neu-inset'
+                          : 'border-[var(--border-subtle)] neu-inset'
                       }`}
-                      title={`${item.dayName}: ${item.rate}% (${item.completed}/${item.total} selesai)`}
+                      title={
+                        item.isBeforeFirstUse
+                          ? `${item.dayName}: Belum digunakan (sebelum mulai pakai app)`
+                          : item.total === 0
+                          ? `${item.dayName}: Tidak ada task`
+                          : `${item.dayName}: ${item.rate}% (${item.completed}/${item.total} selesai)`
+                      }
                     >
-                      {/* Fill Inside Track - Scale from bottom */}
-                      <motion.div
-                        className={`w-full h-full rounded-full ${
-                          item.isToday
-                            ? 'bg-accent shadow-[0_0_8px_var(--accent)]'
-                            : item.rate >= 80
-                            ? 'bg-status-done'
-                            : item.rate > 0
-                            ? 'bg-text-secondary/60'
-                            : 'bg-transparent'
-                        }`}
-                        style={{ transformOrigin: 'bottom' }}
-                        initial={{ scaleY: 0 }}
-                        animate={{ scaleY: percentage / 100 }}
-                        transition={{
-                          duration: DURATION.slow,
-                          ease: EASE_STANDARD,
-                          delay: idx * 0.04,
-                        }}
-                      />
+                      {/* Fill Inside Track */}
+                      {!item.isBeforeFirstUse && (
+                        <motion.div
+                          className={`w-full h-full rounded-full ${
+                            item.isToday
+                              ? 'bg-accent shadow-[0_0_8px_var(--accent)]'
+                              : item.rate >= 80
+                              ? 'bg-status-done'
+                              : item.rate > 0
+                              ? 'bg-text-secondary/60'
+                              : 'bg-transparent'
+                          }`}
+                          style={{ transformOrigin: 'bottom' }}
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: percentage / 100 }}
+                          transition={{
+                            duration: DURATION.slow,
+                            ease: EASE_STANDARD,
+                            delay: idx * 0.04,
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                   <span
                     className={`text-[10px] font-mono capitalize text-center truncate w-full block ${
-                      item.isToday ? 'font-bold text-accent' : 'text-text-secondary'
+                      item.isBeforeFirstUse
+                        ? 'text-text-secondary/40'
+                        : item.isToday
+                        ? 'font-bold text-accent'
+                        : 'text-text-secondary'
                     }`}
                     title={item.date}
                   >
@@ -197,12 +236,20 @@ export const BentoStats: React.FC = () => {
           </div>
         </NeuCard>
 
-        {/* Card 4: Urgent & Attention Status */}
+        {/* Card 4: Urgent & Attention Status + Multi-Year Indicator */}
         <NeuCard padding="lg" className="w-full flex flex-col justify-between min-w-0 border border-[var(--border-subtle)]">
           <div className="min-w-0">
-            <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary block">
-              Status Perhatian
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary block">
+                Status Perhatian
+              </span>
+              {monthlySummaries.length > 0 && (
+                <span className="text-[10px] font-mono text-text-secondary/80 flex items-center gap-1">
+                  <IconWrapper icon={Calendar} size={11} />
+                  <span>{monthlySummaries.length} bln terarsip</span>
+                </span>
+              )}
+            </div>
 
             {urgentTasks.length > 0 ? (
               <div className="mt-2.5 p-3 rounded-neu-md bg-status-urgent/10 border border-status-urgent/25 flex items-start gap-2.5 min-w-0">
