@@ -1,6 +1,10 @@
+'use client';
+
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { IconWrapper } from './IconWrapper';
+import { SPRING_TACTILE, DURATION } from '@/lib/motion-tokens';
 
 export interface NeuCheckboxProps {
   checked: boolean;
@@ -35,7 +39,7 @@ export const NeuCheckbox: React.FC<NeuCheckboxProps> = ({
   };
 
   return (
-    <button
+    <motion.button
       id={id}
       type="button"
       role="checkbox"
@@ -44,19 +48,27 @@ export const NeuCheckbox: React.FC<NeuCheckboxProps> = ({
       disabled={disabled}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={`relative w-7 h-7 min-w-[28px] min-h-[28px] rounded-neu-sm flex items-center justify-center transition-all duration-150 ease-out select-none outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+      whileTap={!disabled ? { scale: 0.92 } : undefined}
+      className={`relative w-7 h-7 min-w-[28px] min-h-[28px] rounded-neu-sm flex items-center justify-center select-none outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-200 ${
         checked
           ? 'bg-status-done text-white shadow-[2px_2px_5px_var(--shadow-dark)]'
           : 'bg-base neu-small hover:shadow-[4px_4px_8px_var(--shadow-dark),-4px_-4px_8px_var(--shadow-light)] active:shadow-[inset_2px_2px_4px_var(--shadow-dark)]'
       } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
-      <div
-        className={`transition-all duration-150 ease-out transform ${
-          checked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
-        }`}
-      >
-        <IconWrapper icon={Check} size={16} color="#FFFFFF" />
-      </div>
-    </button>
+      <AnimatePresence mode="wait">
+        {checked && (
+          <motion.div
+            key="checked-icon"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={SPRING_TACTILE}
+            className="flex items-center justify-center"
+          >
+            <IconWrapper icon={Check} size={16} color="#FFFFFF" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 };

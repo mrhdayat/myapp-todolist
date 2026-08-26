@@ -175,6 +175,10 @@ export function parseAndAnalyzeImport(jsonString: string): ImportAnalysis {
     const nowIso = new Date().toISOString();
     const rawId = record.id || record._id || record.key || record.uuid;
 
+    const isOneTime = Boolean(record.isOneTime);
+    const isRecurring = isOneTime ? false : (record.isRecurring !== undefined ? Boolean(record.isRecurring) : true);
+    const recurringConfig = isRecurring ? ((record.recurringConfig as any) || { type: 'daily' }) : undefined;
+
     const task: Task = {
       id: typeof rawId === 'string' && rawId.length > 0 ? rawId : generateId(),
       title,
@@ -183,8 +187,11 @@ export function parseAndAnalyzeImport(jsonString: string): ImportAnalysis {
       priority: normalizePriority(record.priority || record.prio || record.importance),
       category: normalizeCategory(record.category || record.tag || record.label || record.folder),
       dueDate: typeof record.dueDate === 'string' ? record.dueDate : typeof record.due === 'string' ? record.due : null,
+      dueTime: typeof record.dueTime === 'string' ? record.dueTime : null,
       order: typeof record.order === 'number' ? record.order : index,
-      isRecurring: false,
+      isRecurring,
+      recurringConfig,
+      isOneTime,
       createdAt: typeof record.createdAt === 'string' ? record.createdAt : nowIso,
       updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : nowIso,
       completedAt: status === 'done' ? (typeof record.completedAt === 'string' ? record.completedAt : nowIso) : null,
@@ -220,7 +227,11 @@ export function exportTasksToJSON(tasks: Task[], theme: string = 'warm-clay'): s
       priority: t.priority,
       category: t.category,
       dueDate: t.dueDate || null,
+      dueTime: t.dueTime || null,
       order: t.order,
+      isRecurring: t.isRecurring,
+      recurringConfig: t.recurringConfig,
+      isOneTime: t.isOneTime,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       date: t.date,

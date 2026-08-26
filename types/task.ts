@@ -25,6 +25,7 @@ export interface Task {
   order: number;
   isRecurring: boolean;
   recurringConfig?: RecurringConfig;
+  isOneTime?: boolean;
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
@@ -66,6 +67,7 @@ export interface LegacyImportTask {
   order?: number;
   isRecurring?: boolean;
   recurringConfig?: RecurringConfig;
+  isOneTime?: boolean;
   createdAt?: string;
   updatedAt?: string;
   date?: string;

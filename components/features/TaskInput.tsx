@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Tag, Flag, Calendar, Clock, BellRing, Repeat } from 'lucide-react';
+import { Plus, Tag, Flag, Calendar, Clock, BellRing, Repeat, Zap } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { TaskPriority, TaskCategory, RecurringType, RecurringConfig } from '@/types/task';
 import { NeuButton } from '@/components/ui/NeuButton';
@@ -48,8 +48,8 @@ export const TaskInput: React.FC = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringType, setRecurringType] = useState<RecurringType>('interval');
+  const [taskKind, setTaskKind] = useState<'routine' | 'onetime'>('routine');
+  const [recurringType, setRecurringType] = useState<RecurringType>('daily');
   const [intervalDays, setIntervalDays] = useState(3);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +89,8 @@ export const TaskInput: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const isOneTime = taskKind === 'onetime';
+      const isRecurring = !isOneTime;
       const recurringConfig: RecurringConfig | undefined = isRecurring
         ? {
             type: recurringType,
@@ -104,14 +106,16 @@ export const TaskInput: React.FC = () => {
         dueDate || null,
         dueTime || null,
         isRecurring,
-        recurringConfig
+        recurringConfig,
+        isOneTime
       );
 
       setTitle('');
       setDueDate('');
       setDueTime('');
       setShowOptions(false);
-      setIsRecurring(false);
+      setTaskKind('routine');
+      setRecurringType('daily');
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +146,7 @@ export const TaskInput: React.FC = () => {
             size="md"
             variant={showOptions ? 'inset' : 'default'}
             onClick={() => setShowOptions(!showOptions)}
-            aria-label="Pengaturan prioritas, kategori, waktu, dan perulangan task"
+            aria-label="Pengaturan prioritas, kategori, waktu, dan jenis task"
             className="hidden sm:inline-flex"
           >
             <IconWrapper icon={Tag} size="sm" />
@@ -161,7 +165,7 @@ export const TaskInput: React.FC = () => {
           </NeuButton>
         </div>
 
-        {/* Options Panel (Priority, Category, Due Date, Due Time, Recurring) */}
+        {/* Options Panel (Priority, Category, Due Date, Due Time, Routine vs One-Time) */}
         {showOptions && (
           <div className="pt-3 border-t border-[var(--shadow-dark)]/20 flex flex-col gap-3 animate-fadeIn">
             {/* Top row: Priority, Category, Target Date, Target Time */}
@@ -233,26 +237,42 @@ export const TaskInput: React.FC = () => {
               </div>
             </div>
 
-            {/* Recurring Section */}
+            {/* Task Kind & Routine Scheduling Section */}
             <div className="pt-2 border-t border-[var(--shadow-dark)]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              {/* Task Nature Switcher (Default: Checklist Rutin Harian) */}
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsRecurring(!isRecurring)}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-neu-sm font-medium transition-all ${
-                    isRecurring
-                      ? 'neu-inset text-accent font-semibold'
-                      : 'bg-base text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <IconWrapper icon={Repeat} size="sm" />
-                  <span>{isRecurring ? '🔄 Perulangan Aktif' : 'Perulangan Rutin'}</span>
-                </button>
+                <div className="inline-flex rounded-neu-sm bg-base p-0.5 neu-inset-sm">
+                  <button
+                    type="button"
+                    onClick={() => setTaskKind('routine')}
+                    className={`text-xs px-3 py-1.5 rounded-neu-sm font-semibold transition-all flex items-center gap-1.5 ${
+                      taskKind === 'routine'
+                        ? 'bg-surface-raised text-accent shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <IconWrapper icon={Repeat} size={14} />
+                    <span>Rutin Harian (Default)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskKind('onetime')}
+                    className={`text-xs px-3 py-1.5 rounded-neu-sm font-medium transition-all flex items-center gap-1.5 ${
+                      taskKind === 'onetime'
+                        ? 'bg-surface-raised text-text-primary shadow-sm font-semibold'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <IconWrapper icon={Zap} size={14} />
+                    <span>Sekali Saja</span>
+                  </button>
+                </div>
               </div>
 
-              {isRecurring && (
+              {/* Routine Frequency Selector (When Routine) */}
+              {taskKind === 'routine' && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Type Buttons */}
+                  {/* Frequency Tabs */}
                   <div className="inline-flex rounded-neu-sm bg-base p-0.5 neu-inset-sm">
                     <button
                       type="button"
@@ -263,7 +283,7 @@ export const TaskInput: React.FC = () => {
                           : 'text-text-secondary hover:text-text-primary'
                       }`}
                     >
-                      Harian
+                      Tiap Hari
                     </button>
                     <button
                       type="button"

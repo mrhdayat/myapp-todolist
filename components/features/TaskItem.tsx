@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, GripVertical, Calendar, Clock, Edit3, Check, X, Copy } from 'lucide-react';
+import { Trash2, GripVertical, Calendar, Clock, Edit3, Check, X, Copy, Zap } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTaskStore } from '@/store/useTaskStore';
 import { NeuCheckbox } from '@/components/ui/NeuCheckbox';
@@ -107,7 +107,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
   };
 
   const getRecurringLabel = () => {
-    if (!task.isRecurring || !task.recurringConfig) return null;
+    if (task.isOneTime) return null;
+    if (!task.isRecurring) return null;
+    if (!task.recurringConfig) return 'Harian';
     const { type, intervalDays, weekdays } = task.recurringConfig;
     if (type === 'daily') return 'Harian';
     if (type === 'interval') return `${intervalDays || 3} Hari`;
@@ -167,7 +169,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
         )}
       </div>
 
-      {/* Center: Title & Metadata */}
+      {/* Center: Title & Metadata / Edit Mode */}
       <div className="flex-1 min-w-0 px-1">
         {isEditing ? (
           <div className="flex items-center gap-2">
@@ -177,7 +179,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
               onChange={(e) => setEditTitle(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
-              className="w-full bg-base text-text-primary text-sm sm:text-base font-body rounded-neu-sm neu-inset-sm px-3 py-1.5 outline-none focus:ring-1 focus:ring-accent border border-[var(--border-subtle)]"
+              style={{
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--base)',
+                caretColor: 'var(--accent)',
+              }}
+              className="w-full text-sm sm:text-base font-body font-medium rounded-neu-sm neu-inset-sm px-3.5 py-2 outline-none border border-accent/40 focus:ring-2 focus:ring-accent/40 shadow-[inset_2px_2px_5px_var(--shadow-dark),inset_-2px_-2px_5px_var(--shadow-light)] transition-all duration-200"
             />
             <NeuIconButton
               icon={Check}
@@ -255,12 +262,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, isDragging = false }) 
           {getCategoryLabel(task.category)}
         </NeuBadge>
 
-        {/* Recurring Badge */}
-        {task.isRecurring && (
-          <NeuBadge variant="accent" size="sm" className="hidden sm:inline-flex gap-1 font-mono">
-            <span>🔄</span>
-            <span>{getRecurringLabel()}</span>
+        {/* Recurring or One-Time Badge */}
+        {task.isOneTime ? (
+          <NeuBadge variant="subtle" size="sm" className="hidden sm:inline-flex gap-1 font-mono opacity-80">
+            <IconWrapper icon={Zap} size={11} />
+            <span>Sekali</span>
           </NeuBadge>
+        ) : (
+          task.isRecurring && (
+            <NeuBadge variant="accent" size="sm" className="hidden sm:inline-flex gap-1 font-mono">
+              <span>🔄</span>
+              <span>{getRecurringLabel()}</span>
+            </NeuBadge>
+          )
         )}
 
         {/* Copy Task Button */}

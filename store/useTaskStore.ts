@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { Task, AppSettings, DailyMetric, FilterOptions, ToastMessage, ThemePalette, ThemeMode, RecurringConfig } from '@/types/task';
 import { dbClient } from '@/lib/storage/db';
-import { getTodayDateString, isYesterday, shouldGenerateRecurringTask } from '@/lib/date-utils';
+import { getTodayDateString, isYesterday, getDaysDifference, shouldGenerateRecurringTask } from '@/lib/date-utils';
 import { soundManager } from '@/lib/sound';
 
 export interface TaskState {
@@ -29,7 +29,8 @@ export interface TaskActions {
     dueDate?: string | null,
     dueTime?: string | null,
     isRecurring?: boolean,
-    recurringConfig?: RecurringConfig
+    recurringConfig?: RecurringConfig,
+    isOneTime?: boolean
   ) => Promise<Task>;
   toggleTaskStatus: (id: string) => Promise<void>;
   updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => Promise<void>;
@@ -133,9 +134,9 @@ export const useTaskStore = create<TaskStore>()(
           settings = initialSettings;
         }
 
-        // Ensure any tasks missing titles are safely recovered
+        // Ensure any tasks missing titles are safely recovered & migrate to daily checklist default
         const rawTasks = savedTasks || [];
-        let didRepair = false;
+        let didMigrate = false;
         const tasks: Task[] = rawTasks.map((t, idx) => {
           const rec = t as unknown as Record<string, unknown>;
           const fallbackTitle =
@@ -148,17 +149,24 @@ export const useTaskStore = create<TaskStore>()(
             (typeof rec.description === 'string' && rec.description.trim()) ||
             `Task #${idx + 1}`;
 
-          if (!t.title || !t.title.trim()) {
-            didRepair = true;
+          const isOneTime = Boolean(t.isOneTime);
+          const isRecurring = !isOneTime;
+          const recurringConfig = isRecurring ? (t.recurringConfig || { type: 'daily' }) : undefined;
+
+          if (!t.title || t.isRecurring !== isRecurring || t.isOneTime !== isOneTime) {
+            didMigrate = true;
           }
 
           return {
             ...t,
             title: fallbackTitle,
+            isRecurring,
+            recurringConfig,
+            isOneTime,
           };
         });
 
-        if (didRepair && tasks.length > 0) {
+        if (didMigrate && tasks.length > 0) {
           await dbClient.saveAllTasks(tasks);
         }
 
@@ -207,7 +215,7 @@ export const useTaskStore = create<TaskStore>()(
       }
 
       const isConsecutive = isYesterday(lastDate);
-      const yesterdayTasks = tasks.filter(t => t.date === lastDate);
+      const yesterdayTasks = tasks.filter(t => !t.date || t.date === lastDate);
       const yesterdayDone = yesterdayTasks.filter(t => t.status === 'done').length;
       const yesterdayRate = yesterdayTasks.length > 0 ? (yesterdayDone / yesterdayTasks.length) * 100 : 0;
 
@@ -232,96 +240,108 @@ export const useTaskStore = create<TaskStore>()(
         await dbClient.saveMetric(yesterdayMetric);
       }
 
-      let updatedTasks: Task[];
-      const isCarryOver = settings.autoResetBehavior === 'carry-over';
-
-      if (isCarryOver) {
-        // Carry-over mode: Move non-recurring pending tasks from past days into today
-        updatedTasks = tasks.map(t => {
-          if (t.status === 'pending' && !t.isRecurring && t.date !== today) {
-            return { ...t, date: today, updatedAt: new Date().toISOString() };
-          }
-          return t;
-        });
-      } else {
-        // Archive mode: All past tasks remain archived with their original past date
-        updatedTasks = [...tasks];
-      }
-
-      // Collect recurring templates and generate fresh instances for today
-      const recurringTemplates = new Map<string, Task>();
-      tasks.forEach(t => {
-        if (t.isRecurring && t.recurringConfig && t.recurringConfig.type !== 'none') {
-          const key = t.title.trim().toLowerCase();
-          if (!recurringTemplates.has(key)) {
-            recurringTemplates.set(key, t);
-          }
-        }
-      });
-
-      const newlyGeneratedRecurring: Task[] = [];
       const now = new Date().toISOString();
 
-      Array.from(recurringTemplates.values()).forEach((template) => {
-        const config = template.recurringConfig!;
-        const baseDate = config.lastGeneratedDate || template.date || lastDate;
+      // Daily Checklist Reset Logic:
+      // 1. Recurring tasks (default for all routine tasks):
+      //    - STAY in the daily checklist!
+      //    - Status is reset from 'done' back to 'pending'
+      //    - completedAt is reset to null
+      //    - date is updated to today
+      // 2. One-time tasks (isOneTime: true / isRecurring: false):
+      //    - If completed ('done') yesterday: archived with date = lastDate (will NOT appear in today's active list)
+      //    - If pending: if carry-over mode, move to today; if archive mode, archived to lastDate.
+      const updatedTasks: Task[] = tasks.map((t) => {
+        const isOneTime = Boolean(t.isOneTime) || t.isRecurring === false;
 
-        if (shouldGenerateRecurringTask(config, baseDate, today)) {
-          // Verify no duplicate task with identical title exists for today
-          const alreadyExistsToday = updatedTasks.some(
-            existing =>
-              (existing.date === today || !existing.date) &&
-              existing.title.trim().toLowerCase() === template.title.trim().toLowerCase()
-          );
-
-          if (!alreadyExistsToday) {
-            const genTask: Task = {
-              id: typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : 'task_' + Math.random().toString(36).substring(2, 9) + Date.now(),
-              title: template.title,
-              description: template.description,
-              status: 'pending', // Fresh pending state
-              priority: template.priority,
-              category: template.category,
-              dueDate: template.dueDate,
-              dueTime: template.dueTime || null,
-              order: updatedTasks.length + newlyGeneratedRecurring.length,
-              isRecurring: true,
-              recurringConfig: {
-                ...config,
-                lastGeneratedDate: today,
-              },
-              createdAt: now,
-              updatedAt: now,
-              completedAt: null, // Fresh uncompleted
-              date: today,
-            };
-            newlyGeneratedRecurring.push(genTask);
-          }
-        }
-      });
-
-      // Update recurringConfig.lastGeneratedDate on template tasks
-      const finalExistingTasks = updatedTasks.map(t => {
-        if (t.isRecurring && t.recurringConfig) {
-          const matched = newlyGeneratedRecurring.find(
-            g => g.title.trim().toLowerCase() === t.title.trim().toLowerCase()
-          );
-          if (matched) {
+        if (isOneTime) {
+          // One-time task
+          if (t.status === 'done') {
+            // Archived into history with yesterday's date
             return {
               ...t,
-              recurringConfig: {
-                ...t.recurringConfig,
-                lastGeneratedDate: today,
-              },
+              date: t.date || lastDate,
             };
+          } else {
+            // Still pending
+            if (settings.autoResetBehavior === 'carry-over') {
+              return {
+                ...t,
+                date: today,
+                updatedAt: now,
+              };
+            } else {
+              return {
+                ...t,
+                date: t.date || lastDate,
+              };
+            }
           }
-        }
-        return t;
-      });
+        } else {
+          // Recurring / Daily Checklist task (isRecurring: true)
+          // Evaluate interval or schedule if specified
+          if (t.recurringConfig?.type === 'interval') {
+            const interval = Number(t.recurringConfig.intervalDays) || 3;
+            const baseDate = t.recurringConfig.lastGeneratedDate || t.date || lastDate;
+            const diff = getDaysDifference(baseDate, today);
+            const isEligibleToday = diff >= interval;
 
-      const finalTasks = [...newlyGeneratedRecurring, ...finalExistingTasks];
+            if (isEligibleToday) {
+              return {
+                ...t,
+                status: 'pending',
+                completedAt: null,
+                date: today,
+                updatedAt: now,
+                recurringConfig: {
+                  ...t.recurringConfig,
+                  lastGeneratedDate: today,
+                },
+              };
+            } else {
+              // Not scheduled for today; keep previous date / inactive
+              return {
+                ...t,
+                date: t.date || lastDate,
+              };
+            }
+          }
+
+          if (t.recurringConfig?.type === 'weekdays') {
+            const [y, m, d] = today.split('-').map(Number);
+            const target = new Date(y, m - 1, d, 0, 0, 0, 0);
+            const dayOfWeek = target.getDay();
+            const days = t.recurringConfig.weekdays || [1, 2, 3, 4, 5];
+            const isEligibleToday = days.includes(dayOfWeek);
+
+            if (isEligibleToday) {
+              return {
+                ...t,
+                status: 'pending',
+                completedAt: null,
+                date: today,
+                updatedAt: now,
+              };
+            } else {
+              return {
+                ...t,
+                date: t.date || lastDate,
+              };
+            }
+          }
+
+          // Default: Daily Checklist Task
+          // ALWAYS stays in today's active list with pending status!
+          return {
+            ...t,
+            status: 'pending',
+            completedAt: null,
+            date: today,
+            updatedAt: now,
+            recurringConfig: t.recurringConfig || { type: 'daily' },
+          };
+        }
+      });
 
       const newSettings: AppSettings = {
         ...settings,
@@ -330,9 +350,9 @@ export const useTaskStore = create<TaskStore>()(
         bestStreak,
       };
 
-      set({ tasks: finalTasks, settings: newSettings, metrics: updatedMetrics });
+      set({ tasks: updatedTasks, settings: newSettings, metrics: updatedMetrics });
       await Promise.all([
-        dbClient.saveAllTasks(finalTasks),
+        dbClient.saveAllTasks(updatedTasks),
         dbClient.saveSettings(newSettings),
       ]);
     },
@@ -343,12 +363,16 @@ export const useTaskStore = create<TaskStore>()(
       category = 'work',
       dueDate = null,
       dueTime = null,
-      isRecurring = false,
-      recurringConfig = { type: 'none' }
+      isRecurring = true,
+      recurringConfig = { type: 'daily' },
+      isOneTime = false
     ) => {
       const { tasks, settings } = get();
       const now = new Date().toISOString();
       const today = getTodayDateString();
+
+      const finalIsOneTime = Boolean(isOneTime) || isRecurring === false;
+      const finalIsRecurring = !finalIsOneTime;
 
       const newTask: Task = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'task_' + Date.now(),
@@ -359,8 +383,9 @@ export const useTaskStore = create<TaskStore>()(
         dueDate,
         dueTime,
         order: tasks.length,
-        isRecurring,
-        recurringConfig: isRecurring ? { ...recurringConfig, lastGeneratedDate: today } : undefined,
+        isRecurring: finalIsRecurring,
+        recurringConfig: finalIsRecurring ? (recurringConfig || { type: 'daily' }) : undefined,
+        isOneTime: finalIsOneTime,
         createdAt: now,
         updatedAt: now,
         completedAt: null,
@@ -453,13 +478,27 @@ export const useTaskStore = create<TaskStore>()(
 
     importTasks: async (importedTasks: Task[], mode: 'replace' | 'merge') => {
       const { tasks } = get();
+      const today = getTodayDateString();
+      const processedImports: Task[] = importedTasks.map((t, idx) => {
+        const isOneTime = Boolean(t.isOneTime);
+        const isRecurring = !isOneTime;
+        return {
+          ...t,
+          id: t.id || 'imported_' + Date.now() + '_' + idx,
+          date: t.date || today,
+          isRecurring,
+          recurringConfig: isRecurring ? (t.recurringConfig || { type: 'daily' }) : undefined,
+          isOneTime,
+        };
+      });
+
       let finalTasks: Task[];
       if (mode === 'replace') {
-        finalTasks = importedTasks;
+        finalTasks = processedImports;
       } else {
         const existingMap = new Map<string, Task>();
         tasks.forEach(t => existingMap.set(t.id, t));
-        importedTasks.forEach(t => existingMap.set(t.id, t));
+        processedImports.forEach(t => existingMap.set(t.id, t));
         finalTasks = Array.from(existingMap.values());
       }
       set({ tasks: finalTasks });

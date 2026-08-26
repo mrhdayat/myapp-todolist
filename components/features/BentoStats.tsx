@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Flame, CheckCircle2, TrendingUp, BarChart2, ShieldAlert } from 'lucide-react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { getTodayDateString, getPast7Days, getDayName } from '@/lib/date-utils';
 import { NeuCard } from '@/components/ui/NeuCard';
 import { IconWrapper } from '@/components/ui/IconWrapper';
+import { DURATION, EASE_STANDARD } from '@/lib/motion-tokens';
 
 export const BentoStats: React.FC = () => {
   const tasks = useTaskStore((state) => state.tasks);
@@ -13,7 +15,7 @@ export const BentoStats: React.FC = () => {
   const metrics = useTaskStore((state) => state.metrics);
 
   const today = getTodayDateString();
-  const todayTasks = tasks.filter((t) => t.date === today);
+  const todayTasks = tasks.filter((t) => !t.date || t.date === today);
   const completedToday = todayTasks.filter((t) => t.status === 'done').length;
   const totalToday = todayTasks.length;
   const completionRate = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
@@ -62,74 +64,76 @@ export const BentoStats: React.FC = () => {
         </span>
       </div>
 
-      {/* Bento Cards Container */}
-      <div className="flex flex-col gap-4 w-full">
-        {/* Card 1: Today's Completion Score & Progress Bar */}
+      {/* Bento Grid Layout (2x2 on desktop, single column on mobile) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 min-w-0">
+        {/* Card 1: Today's Completion Rate */}
         <NeuCard padding="lg" className="w-full flex flex-col justify-between min-w-0 border border-[var(--border-subtle)]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary block">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary">
                 Tingkat Penyelesaian
               </span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-text-primary">
+                <span className="font-display font-bold text-3xl sm:text-4xl text-text-primary">
                   {completionRate}%
                 </span>
-                <span className="font-mono text-xs text-text-secondary truncate">
+                <span className="font-mono text-xs text-text-secondary">
                   ({completedToday}/{totalToday} selesai)
                 </span>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-neu-sm neu-small flex items-center justify-center text-accent flex-shrink-0">
-              <IconWrapper icon={TrendingUp} size="md" />
+            <div className="w-10 h-10 rounded-neu-md neu-small flex items-center justify-center text-accent">
+              <IconWrapper icon={TrendingUp} size="md" color="var(--accent)" />
             </div>
           </div>
 
           {/* Neumorphic Inset Progress Bar */}
           <div className="mt-4">
             <div className="w-full h-3 rounded-full neu-inset p-0.5 overflow-hidden border border-[var(--border-subtle)]">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500 ease-out shadow-[0_0_8px_var(--accent)]"
-                style={{ width: `${Math.max(completionRate, 4)}%` }}
+              <motion.div
+                className="h-full rounded-full bg-accent transition-all duration-300 shadow-[0_0_8px_var(--accent)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${completionRate}%` }}
+                transition={{ duration: DURATION.slow, ease: EASE_STANDARD }}
               />
             </div>
-            <div className="flex justify-between text-[11px] font-mono text-text-secondary mt-1.5 font-medium">
+            <div className="flex justify-between text-[11px] font-mono text-text-secondary mt-1.5">
               <span>Mulai (0%)</span>
               <span>Target 100%</span>
             </div>
           </div>
         </NeuCard>
 
-        {/* Card 2: Streak & Best Record */}
+        {/* Card 2: Streak Counter */}
         <NeuCard padding="lg" className="w-full flex flex-col justify-between min-w-0 border border-[var(--border-subtle)]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary block">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary">
                 Fokus Streak
               </span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-text-primary">
-                  {settings.streak}
+                <span className="font-display font-bold text-3xl sm:text-4xl text-text-primary">
+                  {settings.streak || 1}
                 </span>
                 <span className="font-body text-sm font-medium text-text-secondary">
                   Hari Beruntun
                 </span>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-neu-sm bg-status-urgent/15 text-status-urgent flex items-center justify-center shadow-[2px_2px_5px_var(--shadow-dark)] flex-shrink-0 border border-status-urgent/30">
+            <div className="w-10 h-10 rounded-neu-md neu-small flex items-center justify-center text-status-urgent">
               <IconWrapper icon={Flame} size="md" color="var(--status-urgent)" />
             </div>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
-            <span className="font-body text-text-secondary">Rekor Terbaik:</span>
-            <span className="font-mono font-bold text-text-primary bg-base px-2 py-0.5 rounded-neu-sm neu-inset-sm border border-[var(--border-subtle)]">
-              {settings.bestStreak || settings.streak} Hari
+          <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs font-body text-text-secondary">
+            <span>Rekor Terbaik:</span>
+            <span className="font-mono font-bold text-text-primary px-2 py-0.5 rounded-neu-sm bg-base neu-inset-sm">
+              {settings.bestStreak || settings.streak || 1} Hari
             </span>
           </div>
         </NeuCard>
 
-        {/* Card 3: 7-Day Activity Chart */}
+        {/* Card 3: 7-Day Activity Chart (Capsule Pill Shape) */}
         <NeuCard padding="lg" className="w-full flex flex-col justify-between min-w-0 border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-body uppercase tracking-wider font-semibold text-text-secondary">
@@ -140,30 +144,42 @@ export const BentoStats: React.FC = () => {
             </span>
           </div>
 
-          {/* 7 Responsive Vertical Bars with High Contrast */}
+          {/* 7 Responsive Vertical Capsule Bars */}
           <div className="grid grid-cols-7 gap-2 items-end h-28 pt-2 w-full">
             {weekData.map((item, idx) => {
-              const hasTasks = item.total > 0;
-              const heightPct = Math.max(item.rate, hasTasks ? 12 : 0);
+              const percentage = item.rate;
 
               return (
                 <div key={idx} className="flex flex-col items-center gap-1.5 h-full justify-end min-w-0">
                   <div className="w-full flex-1 flex items-end justify-center">
-                    <div className={`w-full max-w-[24px] h-full rounded-neu-sm neu-inset p-0.5 flex items-end border ${
-                      item.isToday ? 'border-accent/40 ring-1 ring-accent/30' : 'border-[var(--border-subtle)]'
-                    }`}>
-                      <div
-                        className={`w-full rounded-sm transition-all duration-300 ${
+                    {/* Fixed Capsule Track */}
+                    <div
+                      className={`w-full max-w-[20px] h-full rounded-full neu-inset p-0.5 flex flex-col justify-end overflow-hidden border ${
+                        item.isToday
+                          ? 'border-accent/40 ring-1 ring-accent/30'
+                          : 'border-[var(--border-subtle)]'
+                      }`}
+                      title={`${item.dayName}: ${item.rate}% (${item.completed}/${item.total} selesai)`}
+                    >
+                      {/* Fill Inside Track - Scale from bottom */}
+                      <motion.div
+                        className={`w-full h-full rounded-full ${
                           item.isToday
-                            ? 'bg-accent shadow-[0_0_6px_var(--accent)]'
+                            ? 'bg-accent shadow-[0_0_8px_var(--accent)]'
                             : item.rate >= 80
                             ? 'bg-status-done'
                             : item.rate > 0
                             ? 'bg-text-secondary/60'
                             : 'bg-transparent'
                         }`}
-                        style={{ height: `${heightPct}%` }}
-                        title={`${item.dayName}: ${item.rate}% (${item.completed}/${item.total})`}
+                        style={{ transformOrigin: 'bottom' }}
+                        initial={{ scaleY: 0 }}
+                        animate={{ scaleY: percentage / 100 }}
+                        transition={{
+                          duration: DURATION.slow,
+                          ease: EASE_STANDARD,
+                          delay: idx * 0.04,
+                        }}
                       />
                     </div>
                   </div>
