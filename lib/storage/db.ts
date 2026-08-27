@@ -62,11 +62,14 @@ export const dbClient = {
   async getAllTasks(): Promise<Task[]> {
     try {
       const db = await getDB();
-      if (!db) return this.getLocalTasks();
-      return await db.getAll('tasks');
+      if (!db) {
+        return this.getLocalTasks().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      }
+      const tasks = await db.getAll('tasks');
+      return tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     } catch (err) {
       console.warn('[DB] Failed to getAllTasks, using fallback:', err);
-      return this.getLocalTasks();
+      return this.getLocalTasks().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }
   },
 
@@ -84,23 +87,24 @@ export const dbClient = {
   },
 
   async saveAllTasks(tasks: Task[]): Promise<void> {
+    const sorted = [...tasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     try {
       const db = await getDB();
       if (db) {
         const tx = db.transaction('tasks', 'readwrite');
         await tx.store.clear();
-        for (const task of tasks) {
+        for (const task of sorted) {
           await tx.store.put(task);
         }
         await tx.done;
       }
       if (typeof window !== 'undefined') {
-        localStorage.setItem('daily-focus-tasks', JSON.stringify(tasks));
+        localStorage.setItem('daily-focus-tasks', JSON.stringify(sorted));
       }
     } catch (err) {
       console.warn('[DB] Failed to saveAllTasks:', err);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('daily-focus-tasks', JSON.stringify(tasks));
+        localStorage.setItem('daily-focus-tasks', JSON.stringify(sorted));
       }
     }
   },

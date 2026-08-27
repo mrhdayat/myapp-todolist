@@ -172,7 +172,7 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         // Auto-migration for legacy tasks to recurring checklist default
-        const rawTasks = savedTasks || [];
+        const rawTasks = (savedTasks || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         let didMigrate = false;
         const tasks: Task[] = rawTasks.map((t, idx) => {
           const rec = t as unknown as Record<string, unknown>;
@@ -190,20 +190,22 @@ export const useTaskStore = create<TaskStore>()(
           const isRecurring = !isOneTime;
           const recurringConfig = isRecurring ? (t.recurringConfig || { type: 'daily' }) : undefined;
           const isPaused = Boolean(t.isPaused);
+          const preservedOrder = typeof t.order === 'number' ? t.order : idx;
 
-          if (!t.title || t.isRecurring !== isRecurring || t.isOneTime !== isOneTime) {
+          if (!t.title || t.isRecurring !== isRecurring || t.isOneTime !== isOneTime || typeof t.order !== 'number') {
             didMigrate = true;
           }
 
           return {
             ...t,
             title: fallbackTitle,
+            order: preservedOrder,
             isRecurring,
             recurringConfig,
             isOneTime,
             isPaused,
           };
-        });
+        }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
         if (didMigrate && tasks.length > 0) {
           await dbClient.saveAllTasks(tasks);
@@ -372,79 +374,85 @@ export const useTaskStore = create<TaskStore>()(
         //    - If interval: check interval threshold against lastGeneratedDate
         //    - If weekdays: check if today's day-of-week is included
         //    - Default Daily: ALWAYS stays in today's active list with pending status!
-        const updatedTasks: Task[] = tasks.map((t) => {
-          const isOneTime = Boolean(t.isOneTime) || t.isRecurring === false;
+        const updatedTasks: Task[] = tasks
+          .map((t, idx): Task => {
+            const preservedOrder = typeof t.order === 'number' ? t.order : idx;
+            const isOneTime = Boolean(t.isOneTime) || t.isRecurring === false;
 
-          if (isOneTime) {
-            if (t.status === 'done') {
-              return { ...t, date: t.date || lastDate };
+            if (isOneTime) {
+              if (t.status === 'done') {
+                return { ...t, order: preservedOrder, date: t.date || lastDate };
+              } else {
+                if (settings.autoResetBehavior === 'carry-over') {
+                  return { ...t, order: preservedOrder, date: today, updatedAt: now };
+                } else {
+                  return { ...t, order: preservedOrder, date: t.date || lastDate };
+                }
+              }
             } else {
-              if (settings.autoResetBehavior === 'carry-over') {
-                return { ...t, date: today, updatedAt: now };
-              } else {
-                return { ...t, date: t.date || lastDate };
+              // Routine / Recurring Task
+              if (t.isPaused) {
+                return { ...t, order: preservedOrder, date: t.date || lastDate };
               }
-            }
-          } else {
-            // Routine / Recurring Task
-            if (t.isPaused) {
-              return { ...t, date: t.date || lastDate };
-            }
 
-            if (t.recurringConfig?.type === 'interval') {
-              const interval = Number(t.recurringConfig.intervalDays) || 3;
-              const baseDate = t.recurringConfig.lastGeneratedDate || t.date || lastDate;
-              const diff = getDaysDifference(baseDate, today);
-              const isEligibleToday = diff >= interval;
+              if (t.recurringConfig?.type === 'interval') {
+                const interval = Number(t.recurringConfig.intervalDays) || 3;
+                const baseDate = t.recurringConfig.lastGeneratedDate || t.date || lastDate;
+                const diff = getDaysDifference(baseDate, today);
+                const isEligibleToday = diff >= interval;
 
-              if (isEligibleToday) {
-                return {
-                  ...t,
-                  status: 'pending',
-                  completedAt: null,
-                  date: today,
-                  updatedAt: now,
-                  recurringConfig: {
-                    ...t.recurringConfig,
-                    lastGeneratedDate: today,
-                  },
-                };
-              } else {
-                return { ...t, date: t.date || lastDate };
+                if (isEligibleToday) {
+                  return {
+                    ...t,
+                    order: preservedOrder,
+                    status: 'pending',
+                    completedAt: null,
+                    date: today,
+                    updatedAt: now,
+                    recurringConfig: {
+                      ...t.recurringConfig,
+                      lastGeneratedDate: today,
+                    },
+                  };
+                } else {
+                  return { ...t, order: preservedOrder, date: t.date || lastDate };
+                }
               }
-            }
 
-            if (t.recurringConfig?.type === 'weekdays') {
-              const [y, m, d] = today.split('-').map(Number);
-              const target = new Date(y, m - 1, d, 0, 0, 0, 0);
-              const dayOfWeek = target.getDay();
-              const days = t.recurringConfig.weekdays || [1, 2, 3, 4, 5];
-              const isEligibleToday = days.includes(dayOfWeek);
+              if (t.recurringConfig?.type === 'weekdays') {
+                const [y, m, d] = today.split('-').map(Number);
+                const target = new Date(y, m - 1, d, 0, 0, 0, 0);
+                const dayOfWeek = target.getDay();
+                const days = t.recurringConfig.weekdays || [1, 2, 3, 4, 5];
+                const isEligibleToday = days.includes(dayOfWeek);
 
-              if (isEligibleToday) {
-                return {
-                  ...t,
-                  status: 'pending',
-                  completedAt: null,
-                  date: today,
-                  updatedAt: now,
-                };
-              } else {
-                return { ...t, date: t.date || lastDate };
+                if (isEligibleToday) {
+                  return {
+                    ...t,
+                    order: preservedOrder,
+                    status: 'pending',
+                    completedAt: null,
+                    date: today,
+                    updatedAt: now,
+                  };
+                } else {
+                  return { ...t, order: preservedOrder, date: t.date || lastDate };
+                }
               }
-            }
 
-            // Default: Daily Checklist Task
-            return {
-              ...t,
-              status: 'pending',
-              completedAt: null,
-              date: today,
-              updatedAt: now,
-              recurringConfig: t.recurringConfig || { type: 'daily' },
-            };
-          }
-        });
+              // Default: Daily Checklist Task
+              return {
+                ...t,
+                order: preservedOrder,
+                status: 'pending',
+                completedAt: null,
+                date: today,
+                updatedAt: now,
+                recurringConfig: t.recurringConfig || { type: 'daily' },
+              };
+            }
+          })
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
         const newSettings: AppSettings = {
           ...settings,
@@ -498,7 +506,7 @@ export const useTaskStore = create<TaskStore>()(
         category,
         dueDate,
         dueTime,
-        order: tasks.length,
+        order: 0,
         isRecurring: finalIsRecurring,
         recurringConfig: finalIsRecurring ? (recurringConfig || { type: 'daily' }) : undefined,
         isOneTime: finalIsOneTime,
@@ -509,10 +517,10 @@ export const useTaskStore = create<TaskStore>()(
         date: today,
       };
 
-      const updated = [newTask, ...tasks];
+      const updated = [newTask, ...tasks].map((t, idx) => ({ ...t, order: idx }));
       set({ tasks: updated });
       if (settings.soundEnabled) soundManager.playClick();
-      await dbClient.saveTask(newTask);
+      await dbClient.saveAllTasks(updated);
       dbClient.saveAutoBackup(updated, settings, get().metrics);
       broadcastMessage({ type: 'MUTATION_OCCURRED', source: 'addTask', timestamp: Date.now() });
       return newTask;
@@ -676,6 +684,7 @@ export const useTaskStore = create<TaskStore>()(
         return {
           ...t,
           id: t.id || 'imported_' + Date.now() + '_' + idx,
+          order: typeof t.order === 'number' ? t.order : idx,
           date: t.date || today,
           isRecurring,
           recurringConfig: isRecurring ? (t.recurringConfig || { type: 'daily' }) : undefined,
@@ -693,9 +702,13 @@ export const useTaskStore = create<TaskStore>()(
         processedImports.forEach((t) => existingMap.set(t.id, t));
         finalTasks = Array.from(existingMap.values());
       }
-      set({ tasks: finalTasks });
-      await dbClient.saveAllTasks(finalTasks);
-      dbClient.saveAutoBackup(finalTasks, settings, get().metrics);
+      const normalizedTasks = finalTasks
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((t, idx) => ({ ...t, order: idx }));
+
+      set({ tasks: normalizedTasks });
+      await dbClient.saveAllTasks(normalizedTasks);
+      dbClient.saveAutoBackup(normalizedTasks, settings, get().metrics);
       broadcastMessage({ type: 'MUTATION_OCCURRED', source: 'importTasks', timestamp: Date.now() });
       get().addToast({
         type: 'success',

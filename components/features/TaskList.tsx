@@ -16,8 +16,10 @@ export const TaskList: React.FC = () => {
   const prevAllDoneRef = useRef(false);
   const today = getTodayDateString();
 
-  // Active tasks for today (fall back to true if date is missing on legacy items)
-  const todayTasks = tasks.filter((t) => !t.date || t.date === today);
+  // Active tasks for today sorted strictly by order
+  const todayTasks = tasks
+    .filter((t) => !t.date || t.date === today)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   // Filter today's tasks based on status, priority, category, searchQuery
   const filteredTasks = todayTasks.filter((task) => {
@@ -56,8 +58,10 @@ export const TaskList: React.FC = () => {
   const handleReorder = (newOrder: Task[]) => {
     // Merge new order for today's filtered items back into overall tasks list
     const filteredIdSet = new Set(newOrder.map((t) => t.id));
-    const nonFiltered = tasks.filter((t) => !filteredIdSet.has(t.id));
-    const combined = [...newOrder, ...nonFiltered];
+    const nonFiltered = tasks
+      .filter((t) => !filteredIdSet.has(t.id))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const combined = [...newOrder, ...nonFiltered].map((t, idx) => ({ ...t, order: idx }));
     reorderTasks(combined);
   };
 
